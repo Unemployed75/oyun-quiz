@@ -524,6 +524,43 @@ async function fetchPool(game){
   }
   return Object.keys(items).length ? { items, fetched: firebase.database.ServerValue.TIMESTAMP } : null;
 }
+// Resmi soundtrack albümünü (çalma listesi) bulup en çok dinlenen parçaları alır
+async function fetchPoolPL(game){
+  const stop = ['of','and','a','to','in','on','for'];
+  const fix = x => (' ' + norm(x) + ' ').replace(/ grand theft auto /g, ' gta ').trim();
+  const sets = [game, ...game.split(':')].map(x => fix(x).split(' ').filter(w => w && !stop.includes(w))).filter(a => a.length);
+  const badPl = /cover|remix|piano|lo-?fi|playthrough|walkthrough|gameplay|let'?s play|full game|reaction|guitar|orchestra|8.?bit|rap|best of|top \d+|meme|songs? by|inspired/i;
+  const badTr = /cover|remix|piano|reaction|lo-?fi|nightcore|slowed|sped up|8d audio|trailer|gameplay|lyric/i;
+  const s = await ytGet('search?part=snippet&type=playlist&maxResults=15&q=' + encodeURIComponent(game + ' original soundtrack'));
+  const official = p => / - topic$/i.test(p.ch) || /^album/i.test(p.title);
+  const pls = (s.items || []).map(i => ({ id:i.id.playlistId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle) }))
+    .filter(p => p.id && /soundtrack|\bost\b|album|music|score/i.test(p.title) && !badPl.test(p.title))
+    .filter(p => { const h = fix(p.title).split(' '); return sets.some(set => set.every(w => h.includes(w))); })
+    .sort((a,b) => official(b) - official(a));
+  for(const pl of pls.slice(0, 3)){
+    const it = await ytGet('playlistItems?part=contentDetails&maxResults=50&playlistId=' + pl.id);
+    const ids = (it.items || []).map(x => x.contentDetails && x.contentDetails.videoId).filter(Boolean);
+    if(ids.length < 3) continue;
+    const d = await ytGet('videos?part=contentDetails,statistics,snippet,status&id=' + ids.join(','));
+    const list = (d.items || []).filter(v => !v.status || v.status.embeddable !== false)
+      .map(v => ({ id:v.id, title:v.snippet.title, ch:v.snippet.channelTitle, views:+(v.statistics.viewCount || 0), dur:isoDur(v.contentDetails.duration), src:pl.title }))
+      .filter(t => t.dur >= 40 && t.dur <= 900 && !badTr.test(t.title))
+      .sort((a,b) => b.views - a.views);
+    if(list.length < 3) continue;
+    const items = {};
+    for(const t of list.slice(0, 6)) items[t.id] = { ...t, up:0, down:0 };
+    return { items, fetched: firebase.database.ServerValue.TIMESTAMP };
+  }
+  return null;
+}
+window.__vgqTest2 = async list => {
+  const out = {};
+  for(const g of list){
+    try{ const f = await fetchPoolPL(g); out[g] = f ? ['ALBÜM: ' + Object.values(f.items)[0].src, ...Object.values(f.items).map(t => t.title + '  [' + t.ch + ', ' + Math.round(t.views / 1000) + 'k]')] : 'BULUNAMADI'; }
+    catch(e){ out[g] = 'HATA: ' + e.message; }
+  }
+  return out;
+};
 window.__vgqTest = async list => {
   const out = {};
   for(const g of list){
