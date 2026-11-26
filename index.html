@@ -258,8 +258,8 @@ BioShock Infinite
 Fallout 3
 Fallout 4
 Fallout New Vegas
-The Elder Scrolls V Skyrim
-The Elder Scrolls IV Oblivion
+The Elder Scrolls V: Skyrim
+The Elder Scrolls IV: Oblivion
 Mass Effect
 Mass Effect 2
 Dragon Age Origins
@@ -317,7 +317,7 @@ Need for Speed Underground 2
 Burnout Paradise
 Forza Horizon 4
 Rocket League
-FIFA
+FIFA 14
 Tony Hawk's Pro Skater 2
 Guitar Hero III
 Overwatch
@@ -464,10 +464,12 @@ async function fetchCover(game, vid){
   if(cache[game]) return cache[game];
   let url = '';
   try{
-    const q = encodeURIComponent(game + ' video game');
-    const j = await (await fetch(`https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrsearch=${q}&gsrlimit=1&prop=pageimages&piprop=thumbnail&pithumbsize=640&pilicense=any`)).json();
-    const pages = j.query && j.query.pages ? Object.values(j.query.pages) : [];
-    if(pages[0] && pages[0].thumbnail) url = pages[0].thumbnail.source;
+    const base = 'https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=pageimages&piprop=thumbnail&pithumbsize=640&pilicense=any&redirects=1';
+    for(const u of [base + '&titles=' + encodeURIComponent(game), base + '&generator=search&gsrlimit=1&gsrsearch=' + encodeURIComponent(game + ' video game')]){
+      const j = await (await fetch(u)).json();
+      const p = j.query && j.query.pages ? Object.values(j.query.pages)[0] : null;
+      if(p && p.thumbnail){ url = p.thumbnail.source; break; }
+    }
   }catch(e){}
   if(url){ cache[game] = url; LS.set('vgq-covers', cache); }
   return url || ('https://i.ytimg.com/vi/' + vid + '/hqdefault.jpg');
