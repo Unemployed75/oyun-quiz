@@ -497,8 +497,10 @@ async function ytGet(path){
   }
   return j;
 }
-// Bir oyunun OST parçalarını bulur: önce alaka, sonra izlenmeye göre sıralar
-async function fetchPool(game){
+// Önce resmi albümden, olmazsa tek tek video aramasından parça havuzu kurar
+async function fetchPool(game){ return (await fetchPoolPL(game)) || (await fetchPoolSearch(game)); }
+// Bir oyunun OST parçalarını video aramasıyla bulur: önce alaka, sonra izlenmeye göre sıralar
+async function fetchPoolSearch(game){
   const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour|\brap\b|lyric|animation|official music video|official video|fan song|movie|pel[ií]cula|evolution|sounds with|beta mix|siivagunner|orchestra|live|concert|vs\.?\b|instruments|\bwhy\b|nostalgic|music disc|new music|motion picture|\bmv\b|visualizer|ringtone|marimba|marble|harder|epic version|smash bros|ranked|entire soundtrack|but it|reacts?\b|asmr|8d audio|music video|lava chicken/i;
   const ostRe = /\b(ost|soundtrack|theme|music|bgm|score|title screen|main menu|menu|credits|original|volume)\b/i;
   const stop = ['of','and','a','to','in','on','for'];
@@ -530,13 +532,15 @@ async function fetchPoolPL(game){
   const fix = x => (' ' + norm(x) + ' ').replace(/ grand theft auto /g, ' gta ').trim();
   const sets = [game, ...game.split(':')].map(x => fix(x).split(' ').filter(w => w && !stop.includes(w))).filter(a => a.length);
   const badPl = /cover|remix|piano|lo-?fi|playthrough|walkthrough|gameplay|let'?s play|full game|reaction|guitar|orchestra|8.?bit|rap|best of|top \d+|meme|songs? by|inspired/i;
-  const badTr = /cover|remix|piano|reaction|lo-?fi|nightcore|slowed|sped up|8d audio|trailer|gameplay|lyric/i;
+  const badTr = /cover|remix|piano|reaction|lo-?fi|nightcore|slowed|sped up|8d audio|trailer|gameplay|lyric|fan ?made/i;
   const s = await ytGet('search?part=snippet&type=playlist&maxResults=15&q=' + encodeURIComponent(game + ' original soundtrack'));
   const official = p => / - topic$/i.test(p.ch) || /^album/i.test(p.title);
+  const gw = fix(game).split(' ');
+  const sequel = p => fix(p.title).split(' ').some(w => /^\d{1,2}$/.test(w) && !gw.includes(w)) || (/\bpart\b/i.test(p.title) && !/\bpart\b/i.test(game));
   const pls = (s.items || []).map(i => ({ id:i.id.playlistId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle) }))
     .filter(p => p.id && /soundtrack|\bost\b|album|music|score/i.test(p.title) && !badPl.test(p.title))
     .filter(p => { const h = fix(p.title).split(' '); return sets.some(set => set.every(w => h.includes(w))); })
-    .sort((a,b) => official(b) - official(a));
+    .sort((a,b) => (sequel(a) - sequel(b)) || (official(b) - official(a)));
   for(const pl of pls.slice(0, 3)){
     const it = await ytGet('playlistItems?part=contentDetails&maxResults=50&playlistId=' + pl.id);
     const ids = (it.items || []).map(x => x.contentDetails && x.contentDetails.videoId).filter(Boolean);
