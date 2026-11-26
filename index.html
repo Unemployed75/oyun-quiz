@@ -70,6 +70,11 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
 .winner{font-size:clamp(28px,6vw,46px);font-weight:800;color:var(--acc);text-align:center;margin:10px 0 20px}
 .unlock{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;background:#000c}
 .unlock button{font-size:20px;padding:16px 26px}
+.alist{margin-top:12px;text-align:left;font-size:16px;font-weight:400}
+.alist div{padding:8px 12px;border-radius:10px;background:#0c1524;margin-top:6px;display:flex;justify-content:space-between;gap:10px}
+.alist div.ok{border-left:4px solid var(--ok)}
+.alist div.no{border-left:4px solid var(--bad)}
+.alist.host div{cursor:pointer}
 .coverimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(1.12);transition:filter .25s linear}
 .cover.withimg{background:#05080f}
 .cover.withimg .disc{display:none}
@@ -110,6 +115,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
           <div><label for="listen">Dinleme</label><select id="listen"><option value="5">5 sn</option><option value="10" selected>10 sn</option><option value="15">15 sn</option><option value="20">20 sn</option></select></div>
           <div><label for="startMode">Başlangıç</label><select id="startMode"><option value="mid" selected>Ortalardan</option><option value="begin">Baştan</option></select></div>
           <div><label for="mode">Mod</label><select id="mode"><option value="classic" selected>Klasik</option><option value="cover">Kapak modu (30 sn)</option></select></div>
+          <div><label for="ansMode">Cevap</label><select id="ansMode"><option value="opts" selected>4 şık</option><option value="text">Yazarak (şıksız)</option></select></div>
         </div>
         <details style="margin-top:14px">
           <summary style="cursor:pointer;font-weight:600">Oyun listesi (<span id="gCount"></span> oyun)</summary>
@@ -154,6 +160,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
         <div class="unlock hidden" id="unlock"><button class="main" id="unlockBtn">Sesi açmak için dokun</button></div>
       </div>
       <div class="opts" id="opts"></div>
+      <div class="row hidden" id="textBox" style="margin-top:14px"><div><input id="textIn" placeholder="Oyunun adını yaz" autocomplete="off" maxlength="60"></div><button class="main" id="textBtn" style="flex:0 0 auto">Gönder</button></div>
       <div class="result hidden" id="result"></div>
       <div class="hostbar hidden" id="hostBar">
         <button id="skipBtn">Yanlış şarkı / değiştir</button>
@@ -416,7 +423,7 @@ let room = null, code = null, isHost = false;
 let R = { round:null, reveal:null, players:{}, state:null };
 let myAnswer = null, lastKey = '', yt = null, ytReady = false, stopT = null, tickT = null, playWatch = null, unlocked = false;
 // sadece oda kurucusunda
-let H = { pool:[], n:0, total:10, listen:10, startMode:'mid', mode:'classic', game:null, results:[], idx:0, correct:-1, timer:null, nextT:null };
+let H = { pool:[], n:0, total:10, listen:10, startMode:'mid', mode:'classic', ansMode:'opts', game:null, results:[], idx:0, correct:-1, timer:null, nextT:null };
 
 /* ===== YouTube ===== */
 window.onYouTubeIframeAPIReady = () => {
@@ -510,7 +517,7 @@ $('createBtn').onclick = async () => {
     let c, tries = 0;
     do{ c = Array.from({length:4}, () => letters[Math.floor(Math.random()*letters.length)]).join(''); tries++; }
     while((await db.ref('rooms/' + c + '/state').get()).exists() && tries < 10);
-    H.total = +$('rounds').value; H.listen = +$('listen').value; H.startMode = $('startMode').value; H.mode = $('mode').value;
+    H.total = +$('rounds').value; H.listen = +$('listen').value; H.startMode = $('startMode').value; H.mode = $('mode').value; H.ansMode = $('ansMode').value;
     await db.ref('rooms/' + c).set({ host:pid, state:'lobby', created:firebase.database.ServerValue.TIMESTAMP, total:H.total });
     await enterRoom(c, name, true);
   }catch(e){ $('createMsg').textContent = 'Oda kurulamadı: ' + e.message; }
@@ -528,7 +535,7 @@ async function enterRoom(c, name, host){
   $('lobbyWait').classList.toggle('hidden', host);
   $('hostBar').classList.toggle('hidden', !host);
   $('againBtn').classList.toggle('hidden', !host);
-  room.child('players').on('value', s => { R.players = s.val() || {}; renderPlayers(); });
+  room.child('players').on('value', s => { R.players = s.val() || {}; renderPlayers(); if(R.reveal) onReveal(); });
   room.child('state').on('value', s => { R.state = s.val(); onState(); });
   room.child('round').on('value', s => { R.round = s.val(); onRound(); });
   room.child('reveal').on('value', s => { R.reveal = s.val(); onReveal(); });
@@ -570,6 +577,9 @@ function onRound(){
   $('cover').classList.remove('withimg'); img.classList.toggle('hidden', !useImg);
   if(useImg){ img.style.filter = 'blur(40px)'; img.style.opacity = '0'; img.src = r.cover; }
   renderOptions();
+  const txtMode = r.ansMode === 'text';
+  $('opts').classList.toggle('hidden', txtMode); $('textBox').classList.toggle('hidden', !txtMode);
+  $('textIn').value = ''; $('textIn').disabled = true; $('textBtn').disabled = true;
   setStatus('Hazır ol...', true);
   if(ytReady){ yt.cueVideoById({ videoId:r.videoId, startSeconds:r.start }); }
   const wait = Math.max(0, r.startAt - now());
@@ -601,7 +611,37 @@ function renderOptions(){
   const r = R.round;
   $('opts').innerHTML = r.options.map((g,i) => `<button class="opt" data-i="${i}" disabled><b>${'ABCD'[i]}</b>${esc(g)}</button>`).join('');
 }
-function enableOptions(on){ for(const b of $('opts').querySelectorAll('.opt')) b.disabled = !on || myAnswer !== null; }
+function enableOptions(on){
+  for(const b of $('opts').querySelectorAll('.opt')) b.disabled = !on || myAnswer !== null;
+  $('textIn').disabled = $('textBtn').disabled = !on || myAnswer !== null;
+  if(on && myAnswer === null && R.round && R.round.ansMode === 'text') $('textIn').focus();
+}
+function sendText(){
+  const r = R.round, v = $('textIn').value.trim();
+  if(!v || !r || myAnswer !== null || now() > r.deadline || (R.reveal && R.reveal.n === r.n)) return;
+  myAnswer = v; enableOptions(false);
+  room.child('answers/' + r.n + '/' + pid).set({ txt:v, t:Math.max(0, now() - r.startAt) });
+  setStatus('Cevabın alındı: ' + v, true);
+}
+$('textBtn').onclick = sendText;
+$('textIn').onkeydown = e => { if(e.key === 'Enter') sendText(); };
+const ROM = {ii:'2',iii:'3',iv:'4',v:'5',vi:'6',vii:'7',viii:'8',ix:'9',x:'10',xi:'11',xii:'12',xiii:'13',xiv:'14',xv:'15'};
+function norm(s){
+  return String(s).toLowerCase().replace(/[ıi̇]/g,'i').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim()
+    .split(' ').filter(w => w && w !== 'the').map(w => ROM[w] || w).join(' ');
+}
+function lev(a, b){
+  let p = Array.from({length:b.length+1}, (_,j) => j);
+  for(let i=1;i<=a.length;i++){ const c=[i]; for(let j=1;j<=b.length;j++) c[j] = Math.min(p[j]+1, c[j-1]+1, p[j-1] + (a[i-1]===b[j-1]?0:1)); p = c; }
+  return p[b.length];
+}
+function isCorrect(ans, game){
+  const a = norm(ans); if(a.length < 2) return false;
+  const cands = [game, ...game.split(':')].map(norm).filter(Boolean);
+  return cands.some(c => a === c || a.replace(/ /g,'') === c.replace(/ /g,'') || (c.length >= 4 && lev(a, c) <= Math.max(1, Math.floor(c.length * 0.2))));
+}
+const speedPts = (t, span) => 500 + Math.round(500 * Math.max(0, 1 - t / span));
 $('opts').onclick = e => {
   const b = e.target.closest('.opt'); if(!b || b.disabled) return;
   const r = R.round; if(!r || now() > r.deadline || (R.reveal && R.reveal.n === r.n)) return;
@@ -624,7 +664,8 @@ function onReveal(){
     else if(i === myAnswer) b.classList.add('wrong');
   }
   const mine = R.players[pid] && R.players[pid].last;
-  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : myAnswer === v.idx ? 'Doğru! +' + (mine||0) + ' puan' : 'Yanlış'}</div>`;
+  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine ? 'Doğru! +' + mine + ' puan' : 'Yanlış'}</div>` +
+    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div data-k="${k}" class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}</span><span>${a.ok ? '+' + a.pts : '✗'}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen cevaba tıklayıp düzeltebilirsin.</small>' : ''}</div>` : '');
   $('result').classList.remove('hidden');
 }
 
@@ -674,7 +715,7 @@ async function issueRound(){
   ups['answers/' + H.n] = null;
   ups.reveal = null;
   ups.state = 'play';
-  ups.round = { n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover };
+  ups.round = { n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode };
   room.update(ups);
   H.timer = setInterval(hostCheck, 500);
 }
@@ -690,19 +731,34 @@ async function hostReveal(ansIn){
   const r = R.round; if(!r || r.n !== H.n) return;
   const ans = ansIn || (await room.child('answers/' + H.n).get()).val() || {};
   const span = r.deadline - r.startAt;
-  const ups = {};
+  const ups = {}, list = [];
   for(const id in R.players){
     const a = ans[id];
-    const pts = a && a.i === H.correct ? 500 + Math.round(500 * Math.max(0, 1 - a.t / span)) : 0;
+    const ok = a ? (r.ansMode === 'text' ? isCorrect(a.txt, H.game) : a.i === H.correct) : false;
+    const pts = ok ? speedPts(a.t, span) : 0;
+    if(a && r.ansMode === 'text') list.push({ id, name:R.players[id].name, txt:a.txt, t:a.t, ok, pts });
     ups['players/' + id + '/score'] = (R.players[id].score || 0) + pts;
     ups['players/' + id + '/last'] = pts;
   }
   const v = H.results[H.idx] || {};
   ups.reveal = { n:H.n, idx:H.correct, game:H.game, title:v.title || '' };
+  if(list.length) ups.reveal.list = list.sort((x,y) => x.t - y.t);
   ups.state = 'reveal';
   await room.update(ups);
-  H.nextT = setTimeout(hostNext, 9000);
+  H.nextT = setTimeout(hostNext, r.ansMode === 'text' ? 14000 : 9000);
 }
+$('result').onclick = async e => {
+  const d = e.target.closest('.alist div[data-k]');
+  if(!d || !isHost || !R.reveal || !R.reveal.list || R.state !== 'reveal') return;
+  const k = +d.dataset.k, it = R.reveal.list[k], r = R.round; if(!it || !r) return;
+  const ok = !it.ok, pts = ok ? speedPts(it.t, r.deadline - r.startAt) : 0;
+  const ups = {};
+  ups['reveal/list/' + k + '/ok'] = ok; ups['reveal/list/' + k + '/pts'] = pts;
+  ups['players/' + it.id + '/score'] = ((R.players[it.id] || {}).score || 0) - (it.pts || 0) + pts;
+  ups['players/' + it.id + '/last'] = pts;
+  clearTimeout(H.nextT); H.nextT = setTimeout(hostNext, 10000);
+  await room.update(ups);
+};
 $('skipBtn').onclick = () => {
   if(R.state !== 'play') return;
   const v = H.results[H.idx]; if(v) dropFromCache(H.game, v.id);
