@@ -567,8 +567,8 @@ function onRound(){
   $('cover').classList.remove('off');
   $('barFill').style.width = '0';
   const img = $('coverImg'), useImg = r.mode === 'cover' && r.cover;
-  $('cover').classList.toggle('withimg', !!useImg); img.classList.toggle('hidden', !useImg);
-  if(useImg){ img.style.filter = 'blur(40px)'; img.src = r.cover; }
+  $('cover').classList.remove('withimg'); img.classList.toggle('hidden', !useImg);
+  if(useImg){ img.style.filter = 'blur(40px)'; img.style.opacity = '0'; img.src = r.cover; }
   renderOptions();
   setStatus('Hazır ol...', true);
   if(ytReady){ yt.cueVideoById({ videoId:r.videoId, startSeconds:r.start }); }
@@ -579,7 +579,13 @@ function onRound(){
     $('timeLbl').textContent = now() < r.startAt ? 'Başlıyor...' : left + ' sn';
     const p = Math.min(1, Math.max(0, (now() - r.startAt) / (r.listen*1000)));
     $('barFill').style.width = (p*100) + '%';
-    if(r.mode === 'cover') $('coverImg').style.filter = 'blur(' + (40 * (1 - p)).toFixed(1) + 'px)';
+    if(r.mode === 'cover' && r.cover){
+      const el = now() - r.startAt, shown = el >= 10000, ci = $('coverImg');
+      const q = Math.min(1, Math.max(0, (el - 10000) / ((r.listen - 10) * 1000)));
+      $('cover').classList.toggle('withimg', shown);
+      ci.style.opacity = shown ? '1' : '0';
+      ci.style.filter = 'blur(' + (40 * (1 - q)).toFixed(1) + 'px)';
+    }
     if(left <= 0) clearInterval(tickT);
   }, 200);
 }
