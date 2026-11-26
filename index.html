@@ -126,7 +126,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
         </div>
         <details style="margin-top:14px">
           <summary style="cursor:pointer;font-weight:600">Oyun listesi (<span id="gCount"></span> oyun)</summary>
-          <small>Her satıra bir oyun. YouTube'da "<i>oyun adı</i> OST main theme" diye aranır.</small>
+          <small>Her satıra bir oyun. YouTube'da "<i>oyun adı</i> music" diye, sadece Müzik kategorisinde aranır.</small>
           <textarea id="gList" style="margin-top:8px"></textarea>
           <div class="row" style="margin-top:8px"><button id="gSave">Kaydet</button><button id="gReset">Varsayılana dön</button></div>
         </details>
@@ -462,11 +462,11 @@ for(const s of document.querySelectorAll('.volIn')){
 }
 
 async function search(game){
-  const cache = LS.get('vgq-cache', {});
+  const cache = LS.get('vgq-cache2', {});
   if(cache[game] && cache[game].length) return cache[game];
   const key = YT_KEY || LS.get('vgq-key','');
-  const q = encodeURIComponent(game + ' OST main theme');
-  const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=8&q=${q}&key=${encodeURIComponent(key)}`);
+  const q = encodeURIComponent(game + ' music');
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoCategoryId=10&maxResults=8&q=${q}&key=${encodeURIComponent(key)}`);
   const j = await r.json();
   if(j.error){
     const why = (j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || '';
@@ -477,12 +477,12 @@ async function search(game){
   const items = (j.items||[]).map(i => ({ id:i.id.videoId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle) }));
   const good = items.filter(i => !bad.test(i.title));
   const list = good.concat(items.filter(i => !good.includes(i))).slice(0,6);
-  cache[game] = list; LS.set('vgq-cache', cache);
+  cache[game] = list; LS.set('vgq-cache2', cache);
   return list;
 }
 function dropFromCache(game, id){
-  const cache = LS.get('vgq-cache', {});
-  if(cache[game]){ cache[game] = cache[game].filter(v => v.id !== id); LS.set('vgq-cache', cache); }
+  const cache = LS.get('vgq-cache2', {});
+  if(cache[game]){ cache[game] = cache[game].filter(v => v.id !== id); LS.set('vgq-cache2', cache); }
 }
 
 const gkey = g => g.replace(/[.#$\[\]\/]/g, '_');
@@ -501,7 +501,7 @@ async function ytGet(path){
 async function fetchPool(game){
   const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour/i;
   const toks = norm(game).split(' ').filter(w => w.length >= 3);
-  const s = await ytGet('search?part=snippet&type=video&videoEmbeddable=true&order=viewCount&maxResults=15&q=' + encodeURIComponent(game + ' OST'));
+  const s = await ytGet('search?part=snippet&type=video&videoEmbeddable=true&videoCategoryId=10&order=viewCount&maxResults=15&q=' + encodeURIComponent(game + ' music'));
   const ids = (s.items || []).map(i => i.id.videoId).filter(Boolean);
   if(!ids.length) return null;
   const d = await ytGet('videos?part=contentDetails,statistics,snippet&id=' + ids.join(','));
