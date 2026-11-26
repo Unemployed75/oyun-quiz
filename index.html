@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Oyun Müziği Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1626;--card:#16233a;--line:#26385a;--ink:#eef3ff;--dim:#93a3c2;--acc:#ffc93c;--ok:#3ddc97;--bad:#ff5d6c;--blue:#4fb3ff}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:radial-gradient(circle at 50% -20%,#1d3358 0,var(--bg) 60%) fixed;color:var(--ink);font:16px/1.5 Rubik,system-ui,sans-serif;min-height:100vh}
+header{padding:22px 5vw 8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:14px/1.6 "Press Start 2P",monospace;margin:0;color:var(--acc);letter-spacing:1px}
+h2{margin:0 0 12px;font-size:22px}
+main{max-width:1100px;margin:0 auto;padding:10px 5vw 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px}
+@media(max-width:800px){.grid{grid-template-columns:minmax(0,1fr)}}
+label{display:block;font-weight:600;margin:14px 0 6px}
+small,.dim{color:var(--dim);font-size:14px}
+input,select,textarea{width:100%;background:#0c1524;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:16px Rubik,sans-serif}
+textarea{min-height:120px;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.row>*{flex:1 1 140px}
+button{min-height:46px;border:0;border-radius:12px;padding:10px 18px;font:600 16px Rubik,sans-serif;cursor:pointer;background:#24385c;color:var(--ink);transition:transform .08s,background .15s}
+button:hover{background:#2d4570}button:active{transform:scale(.97)}
+button.main{background:var(--acc);color:#1a1300}button.main:hover{background:#ffd666}
+button.ok{background:var(--ok);color:#00261a}
+button:disabled{opacity:.45;cursor:not-allowed}
+.hidden{display:none!important}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{background:#0c1524;border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 14px;display:flex;align-items:center;gap:6px}
+.chip button{min-height:28px;padding:0 9px;border-radius:999px;background:#2a3b5e}
+.warn{background:#3a1d24;border:1px solid #7a2d3a;color:#ffd5da;border-radius:12px;padding:12px 14px;margin-bottom:16px}
+/* oyun ekranı */
+.stage{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:16/9;border:2px solid var(--line)}
+.stage #yt,.stage iframe{position:absolute;inset:0;width:100%;height:100%}
+.cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(circle at 50% 40%,#22406e,#0b1322 70%);text-align:center;padding:20px;z-index:2}
+.cover.off{display:none}
+.disc{width:min(34vw,150px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 3px,#1c1c1c 3px 6px);border:4px solid #333;position:relative;box-shadow:0 10px 40px #0008}
+.disc::after{content:"";position:absolute;inset:36%;border-radius:50%;background:var(--acc)}
+.spin .disc{animation:spin 1.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.spin .disc{animation:none}}
+.status{font-size:20px;font-weight:800}
+.bar{height:10px;background:#0c1524;border-radius:99px;overflow:hidden;width:min(80%,420px)}
+.bar i{display:block;height:100%;width:0;background:var(--acc)}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.pill{background:#0c1524;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.controls button{flex:1 1 150px}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.opt{background:#0c1524;border:2px solid var(--line);border-radius:12px;padding:14px;font-weight:600;font-size:18px}
+.opt b{color:var(--acc);margin-right:8px}
+.opt.right{border-color:var(--ok);background:#0f3a2c}
+.answer{text-align:center;margin-top:14px}
+.answer .name{font-size:clamp(26px,5vw,40px);font-weight:800;color:var(--acc);line-height:1.1}
+.who{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:14px 0}
+.who button{background:#0c1524;border:2px solid var(--line)}
+.who button.on{background:#0f3a2c;border-color:var(--ok)}
+table{width:100%;border-collapse:collapse}
+td{padding:9px 6px;border-bottom:1px solid var(--line)}
+td:last-child{text-align:right;font-weight:800;font-size:20px;color:var(--acc)}
+tr.lead td:first-child::after{content:" ★";color:var(--acc)}
+.hist{max-height:220px;overflow:auto;margin-top:8px;font-size:14px;color:var(--dim)}
+.winner{font-size:clamp(28px,6vw,48px);font-weight:800;color:var(--acc);text-align:center;margin:10px 0 20px}
+kbd{background:#0c1524;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>OYUN MÜZİĞİ QUIZ</h1>
+  <span class="dim" id="hdrInfo"></span>
+</header>
+<main>
+  <div class="warn hidden" id="fileWarn">Bu sayfa doğrudan dosyadan (file://) açılmış. YouTube oynatıcısı bu şekilde çalışmaz. Siteyi GitHub Pages'e yükle ya da klasörde <code>python -m http.server</code> çalıştırıp <code>http://localhost:8000</code> adresinden aç.</div>
+
+  <!-- KURULUM -->
+  <section id="setup" class="grid">
+    <div class="card">
+      <h2>Oyunu kur</h2>
+      <label for="apiKey">YouTube API anahtarı</label>
+      <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off">
+      <small>Bir kere girmen yeterli, bu tarayıcıda hatırlanır.</small>
+
+      <label for="pName">Oyuncular</label>
+      <div class="row">
+        <input id="pName" placeholder="İsim yaz, Enter'a bas" maxlength="20">
+        <button id="pAdd" style="flex:0 0 auto">Ekle</button>
+      </div>
+      <div class="chips" id="pList"></div>
+
+      <div class="row">
+        <div><label for="rounds">Tur sayısı</label>
+          <select id="rounds"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></div>
+        <div><label for="listen">Dinleme süresi</label>
+          <select id="listen"><option value="3">3 sn</option><option value="5">5 sn</option><option value="10" selected>10 sn</option><option value="15">15 sn</option><option value="20">20 sn</option></select></div>
+      </div>
+      <div class="row">
+        <div><label for="startMode">Şarkı nereden başlasın</label>
+          <select id="startMode"><option value="begin">Baştan</option><option value="mid" selected>Ortalardan rastgele</option></select></div>
+        <div><label for="choices">Şıklar</label>
+          <select id="choices"><option value="1" selected>4 şık göster</option><option value="0">Şık yok (zor)</option></select></div>
+      </div>
+      <div class="controls"><button class="main" id="startBtn">Oyunu başlat</button></div>
+      <small id="setupMsg"></small>
+    </div>
+
+    <div class="card">
+      <h2>Nasıl oynanır</h2>
+      <p class="dim">Site listeden rastgele bir oyun seçer ve müziğini YouTube'dan bulup çalar. Video gizlidir, sadece ses duyulur. Herkes cevabını yüksek sesle söyler ya da kâğıda yazar.</p>
+      <p class="dim">"Cevabı göster"e basınca oyunun adı açılır. Bilenlerin ismine tıklarsın, puanlar eklenir.</p>
+      <p class="dim"><b>Puan:</b> ilk dinlemede bilen 3 puan alır. Her "+5 sn" bir puan düşürür (en az 1).</p>
+      <p class="dim">Kısayollar: <kbd>Boşluk</kbd> cevabı göster / sonraki tur, <kbd>R</kbd> tekrar dinle, <kbd>E</kbd> +5 sn.</p>
+      <details>
+        <summary style="cursor:pointer;font-weight:600">Oyun listesini düzenle (<span id="gCount"></span> oyun)</summary>
+        <small>Her satıra bir oyun. YouTube'da "<i>oyun adı</i> OST main theme" diye aranır.</small>
+        <textarea id="gList" style="min-height:220px;margin-top:8px"></textarea>
+        <div class="row" style="margin-top:8px"><button id="gSave">Kaydet</button><button id="gReset">Varsayılana dön</button></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- OYUN -->
+  <section id="game" class="grid hidden">
+    <div>
+      <div class="top">
+        <span class="pill" id="roundLbl">Tur 1/10</span>
+        <span class="pill" id="pointLbl">Bu tur: 3 puan</span>
+      </div>
+      <div class="stage">
+        <div id="yt"></div>
+        <div class="cover" id="cover">
+          <div class="disc"></div>
+          <div class="status" id="status">Hazır</div>
+          <div class="bar"><i id="barFill"></i></div>
+        </div>
+      </div>
+      <div class="opts hidden" id="opts"></div>
+      <div class="controls" id="guessCtl">
+        <button id="replayBtn">Tekrar dinle (R)</button>
+        <button id="extraBtn">+5 sn (E)</button>
+        <button id="wrongBtn" title="Video yanlış ya da çalmıyorsa">Yanlış şarkı / geç</button>
+        <button class="main" id="revealBtn">Cevabı göster</button>
+      </div>
+      <div class="answer hidden" id="answer">
+        <div class="dim">Cevap</div>
+        <div class="name" id="ansName"></div>
+        <div class="dim" id="ansTitle"></div>
+        <div class="dim" style="margin-top:12px">Kim bildi? (tıkla)</div>
+        <div class="who" id="who"></div>
+        <button class="ok" id="nextBtn">Puanları ver, sonraki tur</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Puan tablosu</h2>
+      <table><tbody id="board"></tbody></table>
+      <div class="hist" id="hist"></div>
+      <div class="controls"><button id="quitBtn">Oyunu bitir</button></div>
+    </div>
+  </section>
+
+  <!-- SONUÇ -->
+  <section id="end" class="hidden">
+    <div class="card" style="max-width:560px;margin:0 auto">
+      <h2 style="text-align:center">Oyun bitti</h2>
+      <div class="winner" id="winner"></div>
+      <table><tbody id="finalBoard"></tbody></table>
+      <div class="controls"><button class="main" id="againBtn">Yeniden oyna</button><button id="setupBtn">Ayarlara dön</button></div>
+    </div>
+  </section>
+</main>
+
+<script>
+{
+const DEFAULT_GAMES = `Super Mario Bros
+Super Mario 64
+Super Mario Galaxy
+Super Mario Odyssey
+The Legend of Zelda Ocarina of Time
+The Legend of Zelda Breath of the Wild
+The Legend of Zelda Tears of the Kingdom
+The Legend of Zelda Majora's Mask
+Tetris
+Pokemon Red and Blue
+Pokemon Gold and Silver
+Pokemon Black and White
+Sonic the Hedgehog
+Sonic Adventure 2
+Mario Kart 8
+Mario Kart Wii
+Super Smash Bros Brawl
+Donkey Kong Country
+Kirby Super Star
+Metroid Prime
+Animal Crossing New Horizons
+Splatoon 2
+Xenoblade Chronicles
+Fire Emblem Three Houses
+Final Fantasy VII
+Final Fantasy X
+Final Fantasy XIV
+Final Fantasy VI
+Chrono Trigger
+Kingdom Hearts
+Persona 5
+Persona 4
+Dragon Quest XI
+NieR Automata
+Undertale
+Deltarune
+Hollow Knight
+Celeste
+Cuphead
+Hades
+Ori and the Blind Forest
+Terraria
+Stardew Valley
+Minecraft
+Shovel Knight
+Dead Cells
+Hotline Miami
+Katana Zero
+Undertale Megalovania
+Halo
+Halo 3
+Gears of War
+Call of Duty Modern Warfare 2
+Call of Duty Black Ops Zombies
+Battlefield 1
+Doom 2016
+Doom Eternal
+Half-Life 2
+Portal
+Portal 2
+Team Fortress 2
+Counter-Strike Global Offensive
+Left 4 Dead 2
+BioShock
+BioShock Infinite
+Fallout 3
+Fallout 4
+Fallout New Vegas
+The Elder Scrolls V Skyrim
+The Elder Scrolls IV Oblivion
+Mass Effect
+Mass Effect 2
+Dragon Age Origins
+The Witcher 3
+Cyberpunk 2077
+Baldur's Gate 3
+Red Dead Redemption
+Red Dead Redemption 2
+GTA San Andreas
+GTA Vice City
+GTA IV
+GTA V
+Max Payne 3
+Mafia
+Assassin's Creed II
+Assassin's Creed Black Flag
+Far Cry 3
+Prince of Persia
+Uncharted 2
+Uncharted 4
+The Last of Us
+The Last of Us Part II
+God of War 2018
+God of War Ragnarok
+Ghost of Tsushima
+Horizon Zero Dawn
+Spider-Man PS4
+Batman Arkham City
+Shadow of the Colossus
+Journey
+Bloodborne
+Dark Souls
+Dark Souls III
+Elden Ring
+Sekiro
+Metal Gear Solid
+Metal Gear Solid 3 Snake Eater
+Metal Gear Rising Revengeance
+Devil May Cry 5
+Resident Evil 4
+Resident Evil 2 Remake
+Silent Hill 2
+Five Nights at Freddy's
+Street Fighter II
+Street Fighter 6
+Mortal Kombat
+Tekken 3
+Tekken 7
+Crash Bandicoot
+Crash Team Racing
+Spyro the Dragon
+Rayman Legends
+Need for Speed Most Wanted
+Need for Speed Underground 2
+Burnout Paradise
+Forza Horizon 4
+Rocket League
+FIFA
+Tony Hawk's Pro Skater 2
+Guitar Hero III
+Overwatch
+League of Legends
+Dota 2
+World of Warcraft
+Warcraft III
+StarCraft II
+Diablo II
+Diablo III
+Age of Empires II
+Age of Empires III
+Civilization IV Baba Yetu
+Civilization VI
+Command and Conquer Red Alert
+Heroes of Might and Magic III
+Mount and Blade Warband
+Clash of Clans
+Angry Birds
+Plants vs Zombies
+Fruit Ninja
+Subway Surfers
+Geometry Dash
+Among Us
+Fortnite
+PUBG
+Apex Legends
+Valorant
+Genshin Impact
+Honkai Star Rail
+Cyberpunk 2077
+It Takes Two
+Outer Wilds
+Inside
+Limbo
+Bastion
+Transistor
+Hyper Light Drifter
+Risk of Rain 2
+Fez
+Super Meat Boy
+The Binding of Isaac
+Slay the Spire
+Disco Elysium
+Death Stranding
+Halo Reach
+Kingdom Hearts II
+Silksong
+Lethal Company
+Helldivers 2
+Sims 2
+SimCity 4
+Roller Coaster Tycoon
+Pac-Man
+Street Fighter Alpha 3
+Wii Sports
+Wii Shop Channel
+Nintendogs
+Professor Layton
+Ace Attorney
+Okami
+Katamari Damacy
+Jet Set Radio
+Persona 3 Reload`;
+
+const $ = id => document.getElementById(id);
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const decode = s => { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; };
+const shuffle = a => { for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const uniq = a => [...new Set(a.map(s=>s.trim()).filter(Boolean))];
+
+let games = uniq((LS.get('vgq-games', null) || DEFAULT_GAMES).split('\n'));
+let players = LS.get('vgq-players', []);
+const S = { round:0, total:10, listen:10, startMode:'mid', choices:true, pool:[], cur:null, results:[], idx:0,
+            extra:0, start:0, phase:'idle', scores:{}, hist:[], correct:new Set() };
+let yt = null, ytReady = false, stopT = null, barT = null;
+
+if(location.protocol === 'file:') $('fileWarn').classList.remove('hidden');
+$('apiKey').value = LS.get('vgq-key', '');
+
+/* ---------- kurulum ---------- */
+function renderPlayers(){
+  $('pList').innerHTML = players.map((p,i)=>`<span class="chip">${esc(p)}<button data-i="${i}" aria-label="Sil">×</button></span>`).join('')
+    || '<small>Henüz oyuncu yok. En az bir isim ekle.</small>';
+  LS.set('vgq-players', players);
+}
+function addPlayer(){
+  const n = $('pName').value.trim();
+  if(n && !players.includes(n)) players.push(n);
+  $('pName').value = ''; $('pName').focus(); renderPlayers();
+}
+$('pAdd').onclick = addPlayer;
+$('pName').onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); addPlayer(); } };
+$('pList').onclick = e => { const b = e.target.closest('button[data-i]'); if(b){ players.splice(+b.dataset.i,1); renderPlayers(); } };
+
+function renderGames(){ $('gList').value = games.join('\n'); $('gCount').textContent = games.length; }
+$('gSave').onclick = () => { games = uniq($('gList').value.split('\n')); LS.set('vgq-games', games.join('\n')); renderGames(); };
+$('gReset').onclick = () => { games = uniq(DEFAULT_GAMES.split('\n')); LS.set('vgq-games', null); renderGames(); };
+
+function show(id){ for(const s of ['setup','game','end']) $(s).classList.toggle('hidden', s !== id); }
+
+$('startBtn').onclick = () => {
+  const key = $('apiKey').value.trim();
+  if(!key){ $('setupMsg').textContent = 'Önce YouTube API anahtarını gir.'; return; }
+  if(!players.length){ $('setupMsg').textContent = 'En az bir oyuncu ekle.'; return; }
+  if(games.length < 4){ $('setupMsg').textContent = 'Listede en az 4 oyun olmalı.'; return; }
+  if(!ytReady){ $('setupMsg').textContent = 'YouTube oynatıcısı henüz yüklenmedi, birkaç saniye sonra tekrar dene.'; return; }
+  LS.set('vgq-key', key);
+  $('setupMsg').textContent = '';
+  S.total = +$('rounds').value; S.listen = +$('listen').value;
+  S.startMode = $('startMode').value; S.choices = $('choices').value === '1';
+  S.round = 0; S.hist = []; S.scores = {}; players.forEach(p => S.scores[p] = 0);
+  S.pool = shuffle(games.slice());
+  show('game'); renderBoard();
+  if(yt.unMute) yt.unMute();
+  nextRound();
+};
+
+/* ---------- YouTube ---------- */
+window.onYouTubeIframeAPIReady = () => {
+  yt = new YT.Player('yt', {
+    width:'640', height:'360',
+    playerVars:{ controls:0, disablekb:1, playsinline:1, rel:0, iv_load_policy:3, fs:0 },
+    events:{ onReady:()=>{ ytReady = true; }, onError:onYtError, onStateChange:onYtState }
+  });
+};
+
+async function search(game){
+  const cache = LS.get('vgq-cache', {});
+  if(cache[game] && cache[game].length) return cache[game];
+  const key = LS.get('vgq-key','');
+  const q = encodeURIComponent(game + ' OST main theme');
+  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=8&q=${q}&key=${encodeURIComponent(key)}`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if(j.error){
+    const why = (j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || '';
+    if(why === 'quotaExceeded') throw new Error('Günlük YouTube arama hakkı doldu. Yarın sıfırlanır; daha önce çalınan şarkılar yine de çalışır.');
+    throw new Error('YouTube hatası: ' + j.error.message);
+  }
+  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|vs\.?|tier list|acapella|violin|ocarina cover/i;
+  const items = (j.items||[]).map(i => ({ id:i.id.videoId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle) }));
+  const good = items.filter(i => !bad.test(i.title));
+  const list = good.concat(items.filter(i => !good.includes(i))).slice(0,6);
+  cache[game] = list; LS.set('vgq-cache', cache);
+  return list;
+}
+function dropFromCache(game, id){
+  const cache = LS.get('vgq-cache', {});
+  if(cache[game]){ cache[game] = cache[game].filter(v => v.id !== id); LS.set('vgq-cache', cache); }
+}
+
+function setStatus(t, spin){ $('status').textContent = t; $('cover').classList.toggle('spin', !!spin); }
+function clearTimers(){ clearTimeout(stopT); clearInterval(barT); }
+function runBar(sec){
+  const t0 = Date.now(); $('barFill').style.width = '0';
+  clearInterval(barT);
+  barT = setInterval(()=>{ const p = Math.min(1,(Date.now()-t0)/(sec*1000)); $('barFill').style.width = (p*100)+'%'; if(p>=1) clearInterval(barT); }, 100);
+}
+function listenFor(sec){
+  clearTimers(); runBar(sec);
+  setStatus('Dinle...', true);
+  stopT = setTimeout(()=>{ yt.pauseVideo(); S.phase = 'guess'; setStatus('Tahmin zamanı!'); }, sec*1000);
+}
+function updatePoints(){ $('pointLbl').textContent = 'Bu tur: ' + Math.max(1, 3 - S.extra) + ' puan'; }
+
+async function nextRound(){
+  clearTimers();
+  if(S.round >= S.total) return endGame();
+  if(!S.pool.length) S.pool = shuffle(games.slice());
+  S.round++; S.extra = 0; S.correct = new Set(); S.cur = S.pool.pop();
+  $('roundLbl').textContent = `Tur ${S.round}/${S.total}`; updatePoints();
+  $('answer').classList.add('hidden'); $('guessCtl').classList.remove('hidden');
+  $('cover').classList.remove('off'); $('barFill').style.width = '0';
+  renderOptions(false);
+  S.phase = 'loading'; setStatus('Şarkı aranıyor...', true);
+  try{
+    S.results = await search(S.cur); S.idx = 0;
+    playCurrent();
+  }catch(err){
+    S.round--; S.phase = 'error'; setStatus(err.message);
+  }
+}
+function playCurrent(){
+  const v = S.results[S.idx];
+  if(!v){ // bu oyun için çalınabilir video yok: turu yakmadan başka oyuna geç
+    S.round--; setStatus('Bu oyunun müziği bulunamadı, başka oyun seçiliyor...', true);
+    setTimeout(nextRound, 900); return;
+  }
+  S.phase = 'loading'; setStatus('Yükleniyor...', true);
+  S.start = S.startMode === 'mid' ? 20 + Math.floor(Math.random()*40) : 0;
+  yt.loadVideoById({ videoId:v.id, startSeconds:S.start });
+}
+function onYtState(e){
+  if(e.data === YT.PlayerState.PLAYING && S.phase === 'loading'){
+    const d = yt.getDuration();
+    if(d && S.start + S.listen + 3 > d){ S.start = Math.max(0, Math.floor(d/3)); yt.seekTo(S.start, true); }
+    S.phase = 'listen'; listenFor(S.listen);
+  }
+}
+function onYtError(){
+  const v = S.results[S.idx];
+  if(v) dropFromCache(S.cur, v.id);
+  S.idx++; playCurrent();
+}
+
+function renderOptions(reveal){
+  const box = $('opts');
+  if(!S.choices){ box.classList.add('hidden'); return; }
+  if(!reveal){
+    const others = shuffle(games.filter(g => g !== S.cur)).slice(0,3);
+    S.opts = shuffle([S.cur, ...others]);
+  }
+  box.innerHTML = S.opts.map((g,i)=>`<div class="opt${reveal && g===S.cur ? ' right':''}"><b>${'ABCD'[i]}</b>${esc(g)}</div>`).join('');
+  box.classList.remove('hidden');
+}
+
+/* ---------- butonlar ---------- */
+function replay(){ if(S.phase!=='guess' && S.phase!=='listen') return; yt.seekTo(S.start, true); yt.playVideo(); S.phase='listen'; listenFor(S.listen); }
+function extra(){ if(S.phase!=='guess') return; S.extra++; updatePoints(); yt.playVideo(); S.phase='listen'; listenFor(5); }
+function reveal(){
+  if(S.phase!=='guess' && S.phase!=='listen') return;
+  clearTimers(); S.phase = 'reveal';
+  $('cover').classList.add('off'); yt.playVideo();
+  const v = S.results[S.idx] || {};
+  $('ansName').textContent = S.cur;
+  $('ansTitle').textContent = v.title ? v.title + ' · ' + v.ch : '';
+  $('who').innerHTML = players.map((p,i)=>`<button data-i="${i}">${esc(p)}</button>`).join('');
+  $('guessCtl').classList.add('hidden'); $('answer').classList.remove('hidden');
+  renderOptions(true);
+}
+function award(){
+  if(S.phase !== 'reveal') return;
+  const pts = Math.max(1, 3 - S.extra);
+  S.correct.forEach(p => S.scores[p] += pts);
+  S.hist.unshift(`${S.round}. ${S.cur}: ${S.correct.size ? [...S.correct].join(', ') + ' (+' + pts + ')' : 'kimse bilemedi'}`);
+  yt.stopVideo(); renderBoard(); nextRound();
+}
+$('replayBtn').onclick = replay;
+$('extraBtn').onclick = extra;
+$('wrongBtn').onclick = () => { if(S.phase==='idle'||S.phase==='reveal') return; clearTimers(); const v=S.results[S.idx]; if(v) dropFromCache(S.cur, v.id); S.idx++; playCurrent(); };
+$('revealBtn').onclick = reveal;
+$('nextBtn').onclick = award;
+$('who').onclick = e => {
+  const b = e.target.closest('button[data-i]'); if(!b) return;
+  const p = players[+b.dataset.i];
+  S.correct.has(p) ? S.correct.delete(p) : S.correct.add(p);
+  b.classList.toggle('on', S.correct.has(p));
+};
+$('cover').onclick = () => { if(S.phase === 'error') nextRound(); };
+$('quitBtn').onclick = () => { if(yt) yt.stopVideo(); endGame(); };
+$('againBtn').onclick = () => $('startBtn').click();
+$('setupBtn').onclick = () => show('setup');
+document.addEventListener('keydown', e => {
+  if($('game').classList.contains('hidden') || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if(e.code === 'Space'){ e.preventDefault(); S.phase === 'reveal' ? award() : reveal(); }
+  else if(e.key === 'r' || e.key === 'R') replay();
+  else if(e.key === 'e' || e.key === 'E') extra();
+});
+
+function ranked(){ return players.map(p => [p, S.scores[p]||0]).sort((a,b)=>b[1]-a[1]); }
+function renderBoard(){
+  const r = ranked(), top = r.length ? r[0][1] : 0;
+  $('board').innerHTML = r.map(([p,s])=>`<tr class="${s===top && s>0 ? 'lead':''}"><td>${esc(p)}</td><td>${s}</td></tr>`).join('');
+  $('hist').innerHTML = S.hist.map(h=>`<div>${esc(h)}</div>`).join('');
+}
+function endGame(){
+  clearTimers(); S.phase = 'idle';
+  const r = ranked();
+  const best = r.length ? r[0][1] : 0;
+  const winners = r.filter(x => x[1] === best).map(x => x[0]);
+  $('winner').textContent = best > 0 ? (winners.length > 1 ? 'Berabere: ' + winners.join(', ') : winners[0] + ' kazandı!') : 'Kimse puan alamadı';
+  $('finalBoard').innerHTML = r.map(([p,s],i)=>`<tr><td>${i+1}. ${esc(p)}</td><td>${s}</td></tr>`).join('');
+  show('end');
+}
+
+renderPlayers(); renderGames();
+$('hdrInfo').textContent = games.length + ' oyun hazır';
+}
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
