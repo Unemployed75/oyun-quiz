@@ -537,7 +537,7 @@ async function getPool(game){
   const ref = db.ref('tracks/' + gkey(game));
   let d = null;
   try{ d = (await ref.get()).val(); }catch(e){}
-  const ok = t => t && !t.bad && ((t.down || 0) - (t.up || 0)) < 3;
+  const ok = t => t && t.id && !t.bad && ((t.down || 0) - (t.up || 0)) < 3;
   if(!d || !d.items || !Object.values(d.items).some(ok)){
     const f = await fetchPool(game);
     if(f){ try{ await ref.set(f); }catch(e){} d = f; }
@@ -643,7 +643,7 @@ function renderPlayers(){
   $('finalBoard').innerHTML = list.map((p,i) => `<tr><td>${i+1}. ${esc(p.name)}</td><td class="n">${p.score||0}</td></tr>`).join('');
 }
 function onState(){
-  if(R.state === 'lobby') show('lobby');
+  if(R.state === 'lobby'){ clearTimers(); try{ yt.stopVideo(); }catch(e){} lastKey = ''; myAnswer = null; revealedN = -1; $('unlock').classList.add('hidden'); show('lobby'); }
   else if(R.state === 'play' || R.state === 'reveal') show('game');
   else if(R.state === 'end'){
     clearTimers(); try{ yt.stopVideo(); }catch(e){}
@@ -736,11 +736,13 @@ function sendText(){
   setStatus('Cevabın alındı: ' + v, true);
 }
 const voted = {};
+let revealedN = -1;
 $('result').addEventListener('click', e => {
   const b = e.target.closest('.vote button'), v = R.reveal;
   if(!b || !v || !v.vid || voted[v.n]) return;
   voted[v.n] = b.dataset.v;
-  db.ref('tracks/' + v.g + '/items/' + v.vid + '/' + b.dataset.v).set(firebase.database.ServerValue.increment(1)).catch(() => {});
+  const ref = db.ref('tracks/' + v.g + '/items/' + v.vid), field = b.dataset.v;
+  ref.child('id').get().then(sn => { if(sn.exists()) return ref.child(field).set(firebase.database.ServerValue.increment(1)); }).catch(() => {});
   for(const x of document.querySelectorAll('.vote button')) x.disabled = true;
   b.classList.add('on');
 });
@@ -774,10 +776,10 @@ $('opts').onclick = e => {
 function onReveal(){
   const v = R.reveal, r = R.round;
   renderPlayers();
-  if(!v || !r || v.n !== r.n) return;
+  if(!v || !r || v.n !== r.n || R.state === 'lobby' || R.state === 'end') return;
   clearTimers(); $('unlock').classList.add('hidden');
   $('cover').classList.add('off');
-  try{ yt.playVideo(); }catch(e){}
+  if(revealedN !== v.n){ revealedN = v.n; try{ yt.playVideo(); }catch(e){} }
   $('timeLbl').textContent = 'Cevap';
   for(const b of $('opts').querySelectorAll('.opt')){
     const i = +b.dataset.i; b.disabled = true;
@@ -822,7 +824,7 @@ async function hostNext(){
 async function issueRound(){
   clearInterval(H.timer); clearTimeout(H.nextT);
   const v = H.results[H.idx];
-  if(!v){ H.n--; hostNext(); return; }
+  if(!v || !v.id){ H.n--; hostNext(); return; }
   const others = shuffle(games.filter(g => g !== H.game)).slice(0,3);
   const options = shuffle([H.game, ...others]);
   H.correct = options.indexOf(H.game);
