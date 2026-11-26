@@ -70,6 +70,8 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
 .winner{font-size:clamp(28px,6vw,46px);font-weight:800;color:var(--acc);text-align:center;margin:10px 0 20px}
 .unlock{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;background:#000c}
 .unlock button{font-size:20px;padding:16px 26px}
+.vol{display:inline-flex;align-items:center;gap:8px}
+.vol input{width:110px;min-height:0;padding:0;border:0;background:none;accent-color:var(--acc)}
 .alist{margin-top:12px;text-align:left;font-size:16px;font-weight:400}
 .alist div{padding:8px 12px;border-radius:10px;background:#0c1524;margin-top:6px;display:flex;justify-content:space-between;gap:10px}
 .alist div.ok{border-left:4px solid var(--ok)}
@@ -138,6 +140,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
       <div class="plist" id="lobbyPlayers" style="justify-content:center"></div>
       <p class="dim" id="lobbyWait">Oyunu kuran kişinin başlatması bekleniyor...</p>
       <div class="hostbar hidden" id="lobbyHost"><button class="main" id="startBtn">Oyunu başlat</button></div>
+      <p><label class="pill vol">Müzik sesi <input type="range" class="volIn" min="0" max="100" aria-label="Müzik sesi"></label></p>
       <p><small>Telefonda sessiz modu kapat, sesi aç.</small></p>
     </div>
   </section>
@@ -147,6 +150,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
     <div>
       <div class="top">
         <span class="pill" id="roundLbl">Tur 1/10</span>
+        <label class="pill vol">Ses <input type="range" class="volIn" min="0" max="100" aria-label="Müzik sesi"></label>
         <span class="pill" id="timeLbl"></span>
       </div>
       <div class="stage">
@@ -399,6 +403,7 @@ const shuffle = a => { for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.ra
 const uniq = a => [...new Set(a.map(s=>s.trim()).filter(Boolean))];
 const show = id => { for(const s of ['home','lobby','game','end']) $(s).classList.toggle('hidden', s !== id); };
 
+let volume = LS.get('vgq-vol', 50);
 let pid = LS.get('vgq-pid', null);
 if(!pid){ pid = Math.random().toString(36).slice(2,10); LS.set('vgq-pid', pid); }
 let games = uniq((LS.get('vgq-games', null) || DEFAULT_GAMES).split('\n'));
@@ -430,7 +435,7 @@ window.onYouTubeIframeAPIReady = () => {
   yt = new YT.Player('yt', {
     width:'640', height:'360',
     playerVars:{ controls:0, disablekb:1, playsinline:1, rel:0, iv_load_policy:3, fs:0 },
-    events:{ onReady:()=>{ ytReady = true; }, onStateChange:onYtState, onError:onYtError }
+    events:{ onReady:()=>{ ytReady = true; try{ yt.setVolume(volume); }catch(e){} }, onStateChange:onYtState, onError:onYtError }
   });
 };
 function onYtState(e){
@@ -441,6 +446,14 @@ function onYtError(){
   else setStatus('Bu şarkı bu cihazda açılamadı');
 }
 $('unlockBtn').onclick = () => { if(yt){ yt.unMute(); yt.playVideo(); } $('unlock').classList.add('hidden'); };
+for(const s of document.querySelectorAll('.volIn')){
+  s.value = volume;
+  s.oninput = () => {
+    volume = +s.value; LS.set('vgq-vol', volume);
+    for(const o of document.querySelectorAll('.volIn')) o.value = volume;
+    try{ yt.setVolume(volume); if(volume > 0) yt.unMute(); }catch(e){}
+  };
+}
 
 async function search(game){
   const cache = LS.get('vgq-cache', {});
