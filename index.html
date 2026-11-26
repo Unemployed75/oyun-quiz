@@ -499,18 +499,18 @@ async function ytGet(path){
 }
 // Bir oyunun OST parçalarını bulur: önce alaka, sonra izlenmeye göre sıralar
 async function fetchPool(game){
-  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour|\brap\b|lyric|animation|official music video|official video|fan song|movie|pel[ií]cula|evolution|sounds with|beta mix|siivagunner|orchestra|live|concert|vs\.?\b/i;
+  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour|\brap\b|lyric|animation|official music video|official video|fan song|movie|pel[ií]cula|evolution|sounds with|beta mix|siivagunner|orchestra|live|concert|vs\.?\b|instruments|\bwhy\b|nostalgic|music disc|new music|motion picture|\bmv\b|visualizer|ringtone|marimba|marble|harder|epic version|smash bros|ranked|entire soundtrack|but it|reacts?\b|asmr|8d audio/i;
   const ostRe = /\b(ost|soundtrack|theme|music|bgm|score|title screen|main menu|menu|credits|original)\b/i;
   const stop = ['of','and','a','to','in','on','for'];
   const fix = x => (' ' + norm(x) + ' ').replace(/ grand theft auto /g, ' gta ').trim();
-  const toks = fix(game).split(' ').filter(w => w && !stop.includes(w));
+  const sets = [game, ...game.split(':')].map(x => fix(x).split(' ').filter(w => w && !stop.includes(w))).filter(a => a.length);
   const s = await ytGet('search?part=snippet&type=video&videoEmbeddable=true&maxResults=25&q=' + encodeURIComponent(game + ' soundtrack OST'));
   const ids = (s.items || []).map(i => i.id.videoId).filter(Boolean);
   if(!ids.length) return null;
   const d = await ytGet('videos?part=contentDetails,statistics,snippet&id=' + ids.join(','));
   const list = (d.items || []).map(v => ({ id:v.id, title:v.snippet.title, ch:v.snippet.channelTitle, views:+(v.statistics.viewCount || 0), dur:isoDur(v.contentDetails.duration) }))
     .filter(t => t.dur >= 40 && t.dur <= 900 && !bad.test(t.title) && ostRe.test(t.title))
-    .filter(t => { const h = fix(t.title).split(' '); return toks.every(w => h.includes(w)); })
+    .filter(t => { const h = fix(t.title).split(' '); return sets.some(set => set.every(w => h.includes(w))); })
     .sort((a,b) => b.views - a.views);
   const seen = new Set(), items = {};
   for(const t of list){
