@@ -497,17 +497,20 @@ async function ytGet(path){
   }
   return j;
 }
-// Bir oyunun en çok izlenen tek parçalık OST videolarını bulur
+// Bir oyunun OST parçalarını bulur: önce alaka, sonra izlenmeye göre sıralar
 async function fetchPool(game){
-  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour/i;
-  const toks = norm(game).split(' ').filter(w => w.length >= 3);
-  const s = await ytGet('search?part=snippet&type=video&videoEmbeddable=true&videoCategoryId=10&order=viewCount&maxResults=15&q=' + encodeURIComponent(game + ' music'));
+  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour|\brap\b|lyric|animation|official music video|official video|fan song|movie|pel[ií]cula|evolution|sounds with|beta mix|siivagunner|orchestra|live|concert|vs\.?\b/i;
+  const ostRe = /\b(ost|soundtrack|theme|music|bgm|score|title screen|main menu|menu|credits|original)\b/i;
+  const stop = ['of','and','a','to','in','on','for'];
+  const fix = x => (' ' + norm(x) + ' ').replace(/ grand theft auto /g, ' gta ').trim();
+  const toks = fix(game).split(' ').filter(w => w && !stop.includes(w));
+  const s = await ytGet('search?part=snippet&type=video&videoEmbeddable=true&maxResults=25&q=' + encodeURIComponent(game + ' soundtrack OST'));
   const ids = (s.items || []).map(i => i.id.videoId).filter(Boolean);
   if(!ids.length) return null;
   const d = await ytGet('videos?part=contentDetails,statistics,snippet&id=' + ids.join(','));
   const list = (d.items || []).map(v => ({ id:v.id, title:v.snippet.title, ch:v.snippet.channelTitle, views:+(v.statistics.viewCount || 0), dur:isoDur(v.contentDetails.duration) }))
-    .filter(t => t.dur >= 40 && t.dur <= 900 && !bad.test(t.title))
-    .filter(t => { const h = norm(t.title + ' ' + t.ch).split(' '); return !toks.length || toks.some(w => h.includes(w)); })
+    .filter(t => t.dur >= 40 && t.dur <= 900 && !bad.test(t.title) && ostRe.test(t.title))
+    .filter(t => { const h = fix(t.title).split(' '); return toks.every(w => h.includes(w)); })
     .sort((a,b) => b.views - a.views);
   const seen = new Set(), items = {};
   for(const t of list){
@@ -517,6 +520,14 @@ async function fetchPool(game){
   }
   return Object.keys(items).length ? { items, fetched: firebase.database.ServerValue.TIMESTAMP } : null;
 }
+window.__vgqTest = async list => {
+  const out = {};
+  for(const g of list){
+    try{ const f = await fetchPool(g); out[g] = f ? Object.values(f.items).map(t => t.title + '  [' + t.ch + ', ' + Math.round(t.views / 1000) + 'k]') : 'BULUNAMADI'; }
+    catch(e){ out[g] = 'HATA: ' + e.message; }
+  }
+  return out;
+};
 // Ortak veritabanından parça havuzunu getirir, yoksa YouTube'dan doldurur
 async function getPool(game){
   const ref = db.ref('tracks/' + gkey(game));
@@ -526,7 +537,7 @@ async function getPool(game){
   if(!d || !d.items || !Object.values(d.items).some(ok)){
     const f = await fetchPool(game);
     if(f){ try{ await ref.set(f); }catch(e){} d = f; }
-    else return (await search(game)).map(t => ({ ...t, views:0, dur:0 }));
+    else return [];
   }
   return Object.values(d.items).filter(ok);
 }
