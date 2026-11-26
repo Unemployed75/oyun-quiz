@@ -82,6 +82,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
 .alist.host div{cursor:pointer}
 .coverimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(1.12);transition:filter .25s linear}
 .cover.withimg{background:#05080f}
+#coverCv{transform:none}
 .cover.withimg .disc{display:none}
 .cover.withimg .status{position:absolute;bottom:12px;left:0;right:0;text-shadow:0 2px 8px #000,0 0 2px #000}
 .cover.withimg .bar{position:absolute;top:12px;left:50%;transform:translateX(-50%)}
@@ -160,7 +161,8 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
       <div class="stage">
         <div id="yt"></div>
         <div class="cover" id="cover">
-          <img class="coverimg hidden" id="coverImg" alt="">
+          <img class="hidden" id="coverImg" alt="">
+          <canvas class="coverimg hidden" id="coverCv"></canvas>
           <div class="disc"></div>
           <div class="status" id="status">Hazırlanıyor...</div>
           <div class="bar"><i id="barFill"></i></div>
@@ -639,6 +641,26 @@ function onState(){
 function setStatus(t, spin){ $('status').textContent = t; $('cover').classList.toggle('spin', !!spin); }
 function clearTimers(){ clearTimeout(stopT); clearInterval(tickT); clearTimeout(playWatch); }
 
+// Kapağı piksel piksel çizer: q=0 iri pikseller, q=1 net görüntü
+let lastPx = '';
+const PX = [4,5,6,7,8,10,12,14,16,19,22,26,30,36,44,54,70,100,0];
+function drawPixel(q){
+  const img = $('coverImg'), cv = $('coverCv');
+  if(!img.complete || !img.naturalWidth) return;
+  const step = Math.min(PX.length - 1, Math.floor(q * PX.length));
+  const W = cv.clientWidth, Hh = cv.clientHeight; if(!W || !Hh) return;
+  const key = step + ':' + W + ':' + img.src; if(key === lastPx) return; lastPx = key;
+  const dpr = window.devicePixelRatio || 1; cv.width = Math.round(W * dpr); cv.height = Math.round(Hh * dpr);
+  const ctx = cv.getContext('2d'); ctx.clearRect(0, 0, cv.width, cv.height);
+  const s = Math.min(cv.width / img.naturalWidth, cv.height / img.naturalHeight);
+  const dw = img.naturalWidth * s, dh = img.naturalHeight * s, dx = (cv.width - dw) / 2, dy = (cv.height - dh) / 2;
+  const n = PX[step];
+  if(!n){ ctx.imageSmoothingEnabled = true; ctx.drawImage(img, dx, dy, dw, dh); return; }
+  const t = drawPixel.tmp || (drawPixel.tmp = document.createElement('canvas'));
+  t.width = n; t.height = Math.max(1, Math.round(n * img.naturalHeight / img.naturalWidth));
+  const tc = t.getContext('2d'); tc.imageSmoothingEnabled = true; tc.drawImage(img, 0, 0, t.width, t.height);
+  ctx.imageSmoothingEnabled = false; ctx.drawImage(t, dx, dy, dw, dh);
+}
 function onRound(){
   const r = R.round; if(!r) return;
   const key = r.n + ':' + r.videoId;
@@ -649,8 +671,8 @@ function onRound(){
   $('cover').classList.remove('off');
   $('barFill').style.width = '0';
   const img = $('coverImg'), useImg = r.mode === 'cover' && r.cover;
-  $('cover').classList.remove('withimg'); img.classList.toggle('hidden', !useImg);
-  if(useImg){ img.style.filter = 'blur(40px)'; img.style.opacity = '0'; img.src = r.cover; }
+  $('cover').classList.remove('withimg'); $('coverCv').classList.toggle('hidden', !useImg); $('coverCv').style.opacity = '0';
+  if(useImg){ lastPx = ''; img.src = r.cover; }
   renderOptions();
   const txtMode = r.ansMode === 'text';
   $('opts').classList.toggle('hidden', txtMode); $('textBox').classList.toggle('hidden', !txtMode);
@@ -668,8 +690,8 @@ function onRound(){
       const el = now() - r.startAt, shown = el >= 10000, ci = $('coverImg');
       const q = Math.min(1, Math.max(0, (el - 10000) / ((r.listen - 10) * 1000)));
       $('cover').classList.toggle('withimg', shown);
-      ci.style.opacity = shown ? '1' : '0';
-      ci.style.filter = 'blur(' + (40 * (1 - q)).toFixed(1) + 'px)';
+      $('coverCv').style.opacity = shown ? '1' : '0';
+      if(shown) drawPixel(q);
     }
     if(left <= 0) clearInterval(tickT);
   }, 200);
