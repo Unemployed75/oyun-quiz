@@ -72,6 +72,9 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
 .unlock button{font-size:20px;padding:16px 26px}
 .vol{display:inline-flex;align-items:center;gap:8px}
 .vol input{width:110px;min-height:0;padding:0;border:0;background:none;accent-color:var(--acc)}
+.vote{margin-top:12px;font-size:15px;font-weight:400;display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+.vote button{min-height:40px;padding:6px 14px}
+.vote button.on{background:var(--acc);color:#1a1300}
 .alist{margin-top:12px;text-align:left;font-size:16px;font-weight:400}
 .alist div{padding:8px 12px;border-radius:10px;background:#0c1524;margin-top:6px;display:flex;justify-content:space-between;gap:10px}
 .alist div.ok{border-left:4px solid var(--ok)}
@@ -118,6 +121,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
           <div><label for="startMode">Başlangıç</label><select id="startMode"><option value="mid" selected>Ortalardan</option><option value="begin">Baştan</option></select></div>
           <div><label for="mode">Mod</label><select id="mode"><option value="classic" selected>Klasik</option><option value="cover">Kapak modu (30 sn)</option></select></div>
           <div><label for="ansMode">Cevap</label><select id="ansMode"><option value="opts" selected>4 şık</option><option value="text">Yazarak (şıksız)</option></select></div>
+          <div><label for="diff">Zorluk</label><select id="diff"><option value="easy">Kolay</option><option value="normal" selected>Normal</option><option value="hard">Zor</option></select></div>
         </div>
         <details style="margin-top:14px">
           <summary style="cursor:pointer;font-weight:600">Oyun listesi (<span id="gCount"></span> oyun)</summary>
@@ -428,7 +432,7 @@ let room = null, code = null, isHost = false;
 let R = { round:null, reveal:null, players:{}, state:null };
 let myAnswer = null, lastKey = '', yt = null, ytReady = false, stopT = null, tickT = null, playWatch = null, unlocked = false;
 // sadece oda kurucusunda
-let H = { pool:[], n:0, total:10, listen:10, startMode:'mid', mode:'classic', ansMode:'opts', game:null, results:[], idx:0, correct:-1, timer:null, nextT:null };
+let H = { pool:[], n:0, total:10, listen:10, startMode:'mid', mode:'classic', ansMode:'opts', diff:'normal', recent:[], game:null, results:[], idx:0, correct:-1, timer:null, nextT:null };
 
 /* ===== YouTube ===== */
 window.onYouTubeIframeAPIReady = () => {
@@ -442,7 +446,7 @@ function onYtState(e){
   if(e.data === YT.PlayerState.PLAYING){ unlocked = true; $('unlock').classList.add('hidden'); }
 }
 function onYtError(){
-  if(isHost && R.state === 'play'){ H.idx++; issueRound(); }
+  if(isHost && R.state === 'play'){ markBad(H.game, (H.results[H.idx] || {}).id); H.idx++; issueRound(); }
   else setStatus('Bu şarkı bu cihazda açılamadı');
 }
 $('unlockBtn').onclick = () => { if(yt){ yt.unMute(); yt.playVideo(); } $('unlock').classList.add('hidden'); };
@@ -477,6 +481,64 @@ async function search(game){
 function dropFromCache(game, id){
   const cache = LS.get('vgq-cache', {});
   if(cache[game]){ cache[game] = cache[game].filter(v => v.id !== id); LS.set('vgq-cache', cache); }
+}
+
+const gkey = g => g.replace(/[.#$\[\]\/]/g, '_');
+function markBad(game, id){ if(id) db.ref('tracks/' + gkey(game) + '/items/' + id + '/bad').set(true); }
+function isoDur(s){ const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || '') || []; return (+m[1]||0)*3600 + (+m[2]||0)*60 + (+m[3]||0); }
+async function ytGet(path){
+  const j = await (await fetch('https://www.googleapis.com/youtube/v3/' + path + '&key=' + encodeURIComponent(YT_KEY || LS.get('vgq-key','')))).json();
+  if(j.error){
+    const why = (j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || '';
+    if(why === 'quotaExceeded') throw new Error('Günlük YouTube arama hakkı doldu, yarın sıfırlanır. Daha önce çalınan oyunlar yine çalışır.');
+    throw new Error('YouTube hatası: ' + j.error.message);
+  }
+  return j;
+}
+// Bir oyunun en çok izlenen tek parçalık OST videolarını bulur
+async function fetchPool(game){
+  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour/i;
+  const toks = norm(game).split(' ').filter(w => w.length >= 3);
+  const s = await ytGet('search?part=snippet&type=video&videoEmbeddable=true&order=viewCount&maxResults=15&q=' + encodeURIComponent(game + ' OST'));
+  const ids = (s.items || []).map(i => i.id.videoId).filter(Boolean);
+  if(!ids.length) return null;
+  const d = await ytGet('videos?part=contentDetails,statistics,snippet&id=' + ids.join(','));
+  const list = (d.items || []).map(v => ({ id:v.id, title:v.snippet.title, ch:v.snippet.channelTitle, views:+(v.statistics.viewCount || 0), dur:isoDur(v.contentDetails.duration) }))
+    .filter(t => t.dur >= 40 && t.dur <= 900 && !bad.test(t.title))
+    .filter(t => { const h = norm(t.title + ' ' + t.ch).split(' '); return !toks.length || toks.some(w => h.includes(w)); })
+    .sort((a,b) => b.views - a.views);
+  const seen = new Set(), items = {};
+  for(const t of list){
+    const k = norm(t.title).slice(0, 25); if(seen.has(k)) continue; seen.add(k);
+    items[t.id] = { ...t, up:0, down:0 };
+    if(Object.keys(items).length >= 6) break;
+  }
+  return Object.keys(items).length ? { items, fetched: firebase.database.ServerValue.TIMESTAMP } : null;
+}
+// Ortak veritabanından parça havuzunu getirir, yoksa YouTube'dan doldurur
+async function getPool(game){
+  const ref = db.ref('tracks/' + gkey(game));
+  let d = null;
+  try{ d = (await ref.get()).val(); }catch(e){}
+  const ok = t => t && !t.bad && ((t.down || 0) - (t.up || 0)) < 3;
+  if(!d || !d.items || !Object.values(d.items).some(ok)){
+    const f = await fetchPool(game);
+    if(f){ try{ await ref.set(f); }catch(e){} d = f; }
+    else return (await search(game)).map(t => ({ ...t, views:0, dur:0 }));
+  }
+  return Object.values(d.items).filter(ok);
+}
+// Zorluğa göre ünlü parçalardan birini seçer (en ünlü daha sık gelir)
+function orderPool(pool){
+  if(!pool.length) return [];
+  const n = H.diff === 'easy' ? 2 : H.diff === 'hard' ? 6 : 4;
+  const score = t => Math.log10((t.views || 0) + 10) + 0.6 * ((t.up || 0) - (t.down || 0));
+  const top = pool.slice().sort((a,b) => score(b) - score(a));
+  let cand = top.slice(0, n).filter(t => !H.recent.includes(t.id));
+  if(!cand.length) cand = top.slice(0, n);
+  let r = Math.random() * cand.reduce((s,_,i) => s + 1/(i+1), 0), pick = cand[0];
+  for(let i=0;i<cand.length;i++){ r -= 1/(i+1); if(r <= 0){ pick = cand[i]; break; } }
+  return [pick, ...top.filter(t => t !== pick)];
 }
 
 async function fetchCover(game, vid){
@@ -530,7 +592,7 @@ $('createBtn').onclick = async () => {
     let c, tries = 0;
     do{ c = Array.from({length:4}, () => letters[Math.floor(Math.random()*letters.length)]).join(''); tries++; }
     while((await db.ref('rooms/' + c + '/state').get()).exists() && tries < 10);
-    H.total = +$('rounds').value; H.listen = +$('listen').value; H.startMode = $('startMode').value; H.mode = $('mode').value; H.ansMode = $('ansMode').value;
+    H.total = +$('rounds').value; H.listen = +$('listen').value; H.startMode = $('startMode').value; H.mode = $('mode').value; H.ansMode = $('ansMode').value; H.diff = $('diff').value;
     await db.ref('rooms/' + c).set({ host:pid, state:'lobby', created:firebase.database.ServerValue.TIMESTAMP, total:H.total });
     await enterRoom(c, name, true);
   }catch(e){ $('createMsg').textContent = 'Oda kurulamadı: ' + e.message; }
@@ -636,6 +698,15 @@ function sendText(){
   room.child('answers/' + r.n + '/' + pid).set({ txt:v, t:Math.max(0, now() - r.startAt) });
   setStatus('Cevabın alındı: ' + v, true);
 }
+const voted = {};
+$('result').addEventListener('click', e => {
+  const b = e.target.closest('.vote button'), v = R.reveal;
+  if(!b || !v || !v.vid || voted[v.n]) return;
+  voted[v.n] = b.dataset.v;
+  db.ref('tracks/' + v.g + '/items/' + v.vid + '/' + b.dataset.v).set(firebase.database.ServerValue.increment(1)).catch(() => {});
+  for(const x of document.querySelectorAll('.vote button')) x.disabled = true;
+  b.classList.add('on');
+});
 $('textBtn').onclick = sendText;
 $('textIn').onkeydown = e => { if(e.key === 'Enter') sendText(); };
 const ROM = {ii:'2',iii:'3',iv:'4',v:'5',vi:'6',vii:'7',viii:'8',ix:'9',x:'10',xi:'11',xii:'12',xiii:'13',xiv:'14',xv:'15'};
@@ -678,7 +749,8 @@ function onReveal(){
   }
   const mine = R.players[pid] && R.players[pid].last;
   $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine ? 'Doğru! +' + mine + ' puan' : 'Yanlış'}</div>` +
-    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div data-k="${k}" class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}</span><span>${a.ok ? '+' + a.pts : '✗'}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen cevaba tıklayıp düzeltebilirsin.</small>' : ''}</div>` : '');
+    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div data-k="${k}" class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}</span><span>${a.ok ? '+' + a.pts : '✗'}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen cevaba tıklayıp düzeltebilirsin.</small>' : ''}</div>` : '') +
+    (v.vid ? `<div class="vote">Bu parça iyi bir seçim miydi? <button data-v="up" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'up' ? 'on' : ''}">👍</button><button data-v="down" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'down' ? 'on' : ''}">👎</button></div>` : '');
   $('result').classList.remove('hidden');
 }
 
@@ -704,7 +776,7 @@ async function hostNext(){
   H.n++; H.game = H.pool.pop();
   setStatus('Şarkı aranıyor...', true);
   try{
-    H.results = await search(H.game); H.idx = 0;
+    H.results = orderPool(await getPool(H.game)); H.idx = 0;
     issueRound();
   }catch(e){
     H.n--; setStatus(e.message);
@@ -717,9 +789,12 @@ async function issueRound(){
   const others = shuffle(games.filter(g => g !== H.game)).slice(0,3);
   const options = shuffle([H.game, ...others]);
   H.correct = options.indexOf(H.game);
-  const start = H.startMode === 'mid' ? 20 + Math.floor(Math.random()*35) : 0;
   const coverMode = H.mode === 'cover';
   const listen = coverMode ? 30 : H.listen;
+  const dur = v.dur || 180;
+  let start = 0;
+  if(H.startMode === 'mid'){ const hi = Math.max(0, Math.min(dur / 3, dur - listen - 5)); start = hi > 8 ? Math.floor(8 + Math.random() * (hi - 8)) : Math.floor(hi); }
+  H.recent.push(v.id); if(H.recent.length > 60) H.recent.shift();
   const cover = coverMode ? await fetchCover(H.game, v.id) : '';
   if(H.results[H.idx] !== v) return;
   const startAt = now() + 3500;
@@ -754,7 +829,7 @@ async function hostReveal(ansIn){
     ups['players/' + id + '/last'] = pts;
   }
   const v = H.results[H.idx] || {};
-  ups.reveal = { n:H.n, idx:H.correct, game:H.game, title:v.title || '' };
+  ups.reveal = { n:H.n, idx:H.correct, game:H.game, title:v.title || '', g:gkey(H.game), vid:v.id || '' };
   if(list.length) ups.reveal.list = list.sort((x,y) => x.t - y.t);
   ups.state = 'reveal';
   await room.update(ups);
@@ -774,7 +849,7 @@ $('result').onclick = async e => {
 };
 $('skipBtn').onclick = () => {
   if(R.state !== 'play') return;
-  const v = H.results[H.idx]; if(v) dropFromCache(H.game, v.id);
+  const v = H.results[H.idx]; if(v){ dropFromCache(H.game, v.id); markBad(H.game, v.id); }
   H.idx++; issueRound();
 };
 $('nextBtn').onclick = () => { if(R.state === 'reveal') hostNext(); else if(R.state === 'play') hostReveal(); };
