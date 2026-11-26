@@ -10,36 +10,38 @@
 :root{--bg:#0d1626;--card:#16233a;--line:#26385a;--ink:#eef3ff;--dim:#93a3c2;--acc:#ffc93c;--ok:#3ddc97;--bad:#ff5d6c;--blue:#4fb3ff}
 *{box-sizing:border-box;min-width:0}
 body{margin:0;background:radial-gradient(circle at 50% -20%,#1d3358 0,var(--bg) 60%) fixed;color:var(--ink);font:16px/1.5 Rubik,system-ui,sans-serif;min-height:100vh}
-header{padding:22px 5vw 8px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+header{padding:18px 5vw 6px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 h1{font:14px/1.6 "Press Start 2P",monospace;margin:0;color:var(--acc);letter-spacing:1px}
 h2{margin:0 0 12px;font-size:22px}
 main{max-width:1100px;margin:0 auto;padding:10px 5vw 60px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
 .grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px}
-@media(max-width:800px){.grid{grid-template-columns:minmax(0,1fr)}}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media(max-width:800px){.grid,.two{grid-template-columns:minmax(0,1fr)}}
 label{display:block;font-weight:600;margin:14px 0 6px}
 small,.dim{color:var(--dim);font-size:14px}
 input,select,textarea{width:100%;background:#0c1524;color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 12px;font:16px Rubik,sans-serif}
-textarea{min-height:120px;resize:vertical}
+textarea{min-height:180px;resize:vertical}
 input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-.row>*{flex:1 1 140px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>*{flex:1 1 130px}
 button{min-height:46px;border:0;border-radius:12px;padding:10px 18px;font:600 16px Rubik,sans-serif;cursor:pointer;background:#24385c;color:var(--ink);transition:transform .08s,background .15s}
 button:hover{background:#2d4570}button:active{transform:scale(.97)}
 button.main{background:var(--acc);color:#1a1300}button.main:hover{background:#ffd666}
-button.ok{background:var(--ok);color:#00261a}
 button:disabled{opacity:.45;cursor:not-allowed}
 .hidden{display:none!important}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.chip{background:#0c1524;border:1px solid var(--line);border-radius:999px;padding:6px 8px 6px 14px;display:flex;align-items:center;gap:6px}
-.chip button{min-height:28px;padding:0 9px;border-radius:999px;background:#2a3b5e}
-.warn{background:#3a1d24;border:1px solid #7a2d3a;color:#ffd5da;border-radius:12px;padding:12px 14px;margin-bottom:16px}
-/* oyun ekranı */
+.msg{color:var(--bad);font-weight:600;min-height:1.4em;margin-top:8px}
+.code{font:clamp(30px,8vw,54px)/1.2 "Press Start 2P",monospace;color:var(--acc);letter-spacing:6px;text-align:center;margin:8px 0 4px}
+#codeIn{text-transform:uppercase;letter-spacing:4px;font-weight:800}
+.plist{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.plist span{background:#0c1524;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600}
+.plist span.off{opacity:.4}
+/* oyun */
 .stage{position:relative;border-radius:18px;overflow:hidden;background:#000;aspect-ratio:16/9;border:2px solid var(--line)}
 .stage #yt,.stage iframe{position:absolute;inset:0;width:100%;height:100%}
-.cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:radial-gradient(circle at 50% 40%,#22406e,#0b1322 70%);text-align:center;padding:20px;z-index:2}
+.cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#22406e,#0b1322 70%);text-align:center;padding:16px;z-index:2}
 .cover.off{display:none}
-.disc{width:min(34vw,150px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 3px,#1c1c1c 3px 6px);border:4px solid #333;position:relative;box-shadow:0 10px 40px #0008}
+.disc{width:min(26vw,120px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 3px,#1c1c1c 3px 6px);border:4px solid #333;position:relative;box-shadow:0 10px 40px #0008}
 .disc::after{content:"";position:absolute;inset:36%;border-radius:50%;background:var(--acc)}
 .spin .disc{animation:spin 1.6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -49,24 +51,25 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .bar i{display:block;height:100%;width:0;background:var(--acc)}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .pill{background:#0c1524;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600}
-.controls{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-.controls button{flex:1 1 150px}
 .opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
-.opt{background:#0c1524;border:2px solid var(--line);border-radius:12px;padding:14px;font-weight:600;font-size:18px}
+@media(max-width:480px){.opts{grid-template-columns:minmax(0,1fr)}}
+.opt{min-height:64px;text-align:left;background:#0c1524;border:2px solid var(--line);font-size:17px}
 .opt b{color:var(--acc);margin-right:8px}
+.opt.picked{border-color:var(--blue);background:#13305a}
 .opt.right{border-color:var(--ok);background:#0f3a2c}
-.answer{text-align:center;margin-top:14px}
-.answer .name{font-size:clamp(26px,5vw,40px);font-weight:800;color:var(--acc);line-height:1.1}
-.who{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin:14px 0}
-.who button{background:#0c1524;border:2px solid var(--line)}
-.who button.on{background:#0f3a2c;border-color:var(--ok)}
+.opt.wrong{border-color:var(--bad);background:#3a1620}
+.result{text-align:center;margin-top:14px;font-size:18px;font-weight:700}
+.result .name{font-size:clamp(24px,5vw,38px);font-weight:800;color:var(--acc);line-height:1.15}
+.hostbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.hostbar button{flex:1 1 150px}
 table{width:100%;border-collapse:collapse}
 td{padding:9px 6px;border-bottom:1px solid var(--line)}
-td:last-child{text-align:right;font-weight:800;font-size:20px;color:var(--acc)}
-tr.lead td:first-child::after{content:" ★";color:var(--acc)}
-.hist{max-height:220px;overflow:auto;margin-top:8px;font-size:14px;color:var(--dim)}
-.winner{font-size:clamp(28px,6vw,48px);font-weight:800;color:var(--acc);text-align:center;margin:10px 0 20px}
-kbd{background:#0c1524;border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:13px}
+td.n{text-align:right;font-weight:800;font-size:20px;color:var(--acc);white-space:nowrap}
+td.d{text-align:right;color:var(--ok);font-weight:700;width:4.5em;white-space:nowrap}
+tr.me td:first-child{color:var(--blue);font-weight:700}
+.winner{font-size:clamp(28px,6vw,46px);font-weight:800;color:var(--acc);text-align:center;margin:10px 0 20px}
+.unlock{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;background:#000c}
+.unlock button{font-size:20px;padding:16px 26px}
 </style>
 </head>
 <body>
@@ -75,51 +78,55 @@ kbd{background:#0c1524;border:1px solid var(--line);border-radius:6px;padding:1p
   <span class="dim" id="hdrInfo"></span>
 </header>
 <main>
-  <div class="warn hidden" id="fileWarn">Bu sayfa doğrudan dosyadan (file://) açılmış. YouTube oynatıcısı bu şekilde çalışmaz. Siteyi GitHub Pages'e yükle ya da klasörde <code>python -m http.server</code> çalıştırıp <code>http://localhost:8000</code> adresinden aç.</div>
 
-  <!-- KURULUM -->
-  <section id="setup" class="grid">
-    <div class="card">
-      <h2>Oyunu kur</h2>
-      <label for="apiKey">YouTube API anahtarı</label>
-      <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off">
-      <small>Bir kere girmen yeterli, bu tarayıcıda hatırlanır.</small>
-
-      <label for="pName">Oyuncular</label>
-      <div class="row">
-        <input id="pName" placeholder="İsim yaz, Enter'a bas" maxlength="20">
-        <button id="pAdd" style="flex:0 0 auto">Ekle</button>
-      </div>
-      <div class="chips" id="pList"></div>
-
-      <div class="row">
-        <div><label for="rounds">Tur sayısı</label>
-          <select id="rounds"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></div>
-        <div><label for="listen">Dinleme süresi</label>
-          <select id="listen"><option value="3">3 sn</option><option value="5">5 sn</option><option value="10" selected>10 sn</option><option value="15">15 sn</option><option value="20">20 sn</option></select></div>
-      </div>
-      <div class="row">
-        <div><label for="startMode">Şarkı nereden başlasın</label>
-          <select id="startMode"><option value="begin">Baştan</option><option value="mid" selected>Ortalardan rastgele</option></select></div>
-        <div><label for="choices">Şıklar</label>
-          <select id="choices"><option value="1" selected>4 şık göster</option><option value="0">Şık yok (zor)</option></select></div>
-      </div>
-      <div class="controls"><button class="main" id="startBtn">Oyunu başlat</button></div>
-      <small id="setupMsg"></small>
+  <!-- GİRİŞ -->
+  <section id="home">
+    <div class="card" style="margin-bottom:18px">
+      <label for="nameIn" style="margin-top:0">Adın</label>
+      <input id="nameIn" maxlength="16" placeholder="Oyunda görünecek isim">
     </div>
+    <div class="two">
+      <div class="card">
+        <h2>Odaya katıl</h2>
+        <p class="dim">Arkadaşının ekranındaki 4 harfli kodu yaz.</p>
+        <div class="row">
+          <div><label for="codeIn">Oda kodu</label><input id="codeIn" maxlength="4" placeholder="ABCD" autocomplete="off"></div>
+          <button class="main" id="joinBtn" style="flex:0 0 auto">Katıl</button>
+        </div>
+        <div class="msg" id="joinMsg"></div>
+      </div>
+      <div class="card">
+        <h2>Oda kur</h2>
+        <label for="apiKey">YouTube API anahtarı</label>
+        <input id="apiKey" type="password" placeholder="AIza..." autocomplete="off">
+        <small>Sadece odayı kuran girer, bu tarayıcıda hatırlanır.</small>
+        <div class="row">
+          <div><label for="rounds">Tur</label><select id="rounds"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></div>
+          <div><label for="listen">Dinleme</label><select id="listen"><option value="5">5 sn</option><option value="10" selected>10 sn</option><option value="15">15 sn</option><option value="20">20 sn</option></select></div>
+          <div><label for="startMode">Başlangıç</label><select id="startMode"><option value="mid" selected>Ortalardan</option><option value="begin">Baştan</option></select></div>
+        </div>
+        <details style="margin-top:14px">
+          <summary style="cursor:pointer;font-weight:600">Oyun listesi (<span id="gCount"></span> oyun)</summary>
+          <small>Her satıra bir oyun. YouTube'da "<i>oyun adı</i> OST main theme" diye aranır.</small>
+          <textarea id="gList" style="margin-top:8px"></textarea>
+          <div class="row" style="margin-top:8px"><button id="gSave">Kaydet</button><button id="gReset">Varsayılana dön</button></div>
+        </details>
+        <div class="row" style="margin-top:14px"><button class="main" id="createBtn">Oda kur</button></div>
+        <div class="msg" id="createMsg"></div>
+      </div>
+    </div>
+  </section>
 
-    <div class="card">
-      <h2>Nasıl oynanır</h2>
-      <p class="dim">Site listeden rastgele bir oyun seçer ve müziğini YouTube'dan bulup çalar. Video gizlidir, sadece ses duyulur. Herkes cevabını yüksek sesle söyler ya da kâğıda yazar.</p>
-      <p class="dim">"Cevabı göster"e basınca oyunun adı açılır. Bilenlerin ismine tıklarsın, puanlar eklenir.</p>
-      <p class="dim"><b>Puan:</b> ilk dinlemede bilen 3 puan alır. Her "+5 sn" bir puan düşürür (en az 1).</p>
-      <p class="dim">Kısayollar: <kbd>Boşluk</kbd> cevabı göster / sonraki tur, <kbd>R</kbd> tekrar dinle, <kbd>E</kbd> +5 sn.</p>
-      <details>
-        <summary style="cursor:pointer;font-weight:600">Oyun listesini düzenle (<span id="gCount"></span> oyun)</summary>
-        <small>Her satıra bir oyun. YouTube'da "<i>oyun adı</i> OST main theme" diye aranır.</small>
-        <textarea id="gList" style="min-height:220px;margin-top:8px"></textarea>
-        <div class="row" style="margin-top:8px"><button id="gSave">Kaydet</button><button id="gReset">Varsayılana dön</button></div>
-      </details>
+  <!-- LOBİ -->
+  <section id="lobby" class="hidden">
+    <div class="card" style="max-width:640px;margin:0 auto;text-align:center">
+      <div class="dim">Oda kodu</div>
+      <div class="code" id="lobbyCode"></div>
+      <p class="dim">Arkadaşların <b id="siteUrl"></b> adresine girip bu kodu yazsın.</p>
+      <div class="plist" id="lobbyPlayers" style="justify-content:center"></div>
+      <p class="dim" id="lobbyWait">Oyunu kuran kişinin başlatması bekleniyor...</p>
+      <div class="hostbar hidden" id="lobbyHost"><button class="main" id="startBtn">Oyunu başlat</button></div>
+      <p><small>Telefonda sessiz modu kapat, sesi aç.</small></p>
     </div>
   </section>
 
@@ -128,37 +135,28 @@ kbd{background:#0c1524;border:1px solid var(--line);border-radius:6px;padding:1p
     <div>
       <div class="top">
         <span class="pill" id="roundLbl">Tur 1/10</span>
-        <span class="pill" id="pointLbl">Bu tur: 3 puan</span>
+        <span class="pill" id="timeLbl"></span>
       </div>
       <div class="stage">
         <div id="yt"></div>
         <div class="cover" id="cover">
           <div class="disc"></div>
-          <div class="status" id="status">Hazır</div>
+          <div class="status" id="status">Hazırlanıyor...</div>
           <div class="bar"><i id="barFill"></i></div>
         </div>
+        <div class="unlock hidden" id="unlock"><button class="main" id="unlockBtn">Sesi açmak için dokun</button></div>
       </div>
-      <div class="opts hidden" id="opts"></div>
-      <div class="controls" id="guessCtl">
-        <button id="replayBtn">Tekrar dinle (R)</button>
-        <button id="extraBtn">+5 sn (E)</button>
-        <button id="wrongBtn" title="Video yanlış ya da çalmıyorsa">Yanlış şarkı / geç</button>
-        <button class="main" id="revealBtn">Cevabı göster</button>
-      </div>
-      <div class="answer hidden" id="answer">
-        <div class="dim">Cevap</div>
-        <div class="name" id="ansName"></div>
-        <div class="dim" id="ansTitle"></div>
-        <div class="dim" style="margin-top:12px">Kim bildi? (tıkla)</div>
-        <div class="who" id="who"></div>
-        <button class="ok" id="nextBtn">Puanları ver, sonraki tur</button>
+      <div class="opts" id="opts"></div>
+      <div class="result hidden" id="result"></div>
+      <div class="hostbar hidden" id="hostBar">
+        <button id="skipBtn">Yanlış şarkı / değiştir</button>
+        <button id="nextBtn">Sonraki tura geç</button>
+        <button id="endBtn">Oyunu bitir</button>
       </div>
     </div>
     <div class="card">
       <h2>Puan tablosu</h2>
       <table><tbody id="board"></tbody></table>
-      <div class="hist" id="hist"></div>
-      <div class="controls"><button id="quitBtn">Oyunu bitir</button></div>
     </div>
   </section>
 
@@ -168,13 +166,21 @@ kbd{background:#0c1524;border:1px solid var(--line);border-radius:6px;padding:1p
       <h2 style="text-align:center">Oyun bitti</h2>
       <div class="winner" id="winner"></div>
       <table><tbody id="finalBoard"></tbody></table>
-      <div class="controls"><button class="main" id="againBtn">Yeniden oyna</button><button id="setupBtn">Ayarlara dön</button></div>
+      <div class="hostbar"><button class="main hidden" id="againBtn">Aynı odada yeniden oyna</button><button id="leaveBtn">Ana sayfaya dön</button></div>
     </div>
   </section>
 </main>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 {
+/* ===== Firebase ayarı ===== */
+const FB_CONFIG = {
+  databaseURL: "https://balmy-runner-515917-r5-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "balmy-runner-515917-r5"
+};
+
 const DEFAULT_GAMES = `Super Mario Bros
 Super Mario 64
 Super Mario Galaxy
@@ -223,7 +229,6 @@ Shovel Knight
 Dead Cells
 Hotline Miami
 Katana Zero
-Undertale Megalovania
 Halo
 Halo 3
 Gears of War
@@ -333,7 +338,6 @@ Apex Legends
 Valorant
 Genshin Impact
 Honkai Star Rail
-Cyberpunk 2077
 It Takes Two
 Outer Wilds
 Inside
@@ -350,14 +354,13 @@ Disco Elysium
 Death Stranding
 Halo Reach
 Kingdom Hearts II
-Silksong
+Hollow Knight Silksong
 Lethal Company
 Helldivers 2
-Sims 2
+The Sims 2
 SimCity 4
 Roller Coaster Tycoon
 Pac-Man
-Street Fighter Alpha 3
 Wii Sports
 Wii Shop Channel
 Nintendogs
@@ -377,77 +380,63 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const decode = s => { const t = document.createElement('textarea'); t.innerHTML = s; return t.value; };
 const shuffle = a => { for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 const uniq = a => [...new Set(a.map(s=>s.trim()).filter(Boolean))];
+const show = id => { for(const s of ['home','lobby','game','end']) $(s).classList.toggle('hidden', s !== id); };
 
+let pid = LS.get('vgq-pid', null);
+if(!pid){ pid = Math.random().toString(36).slice(2,10); LS.set('vgq-pid', pid); }
 let games = uniq((LS.get('vgq-games', null) || DEFAULT_GAMES).split('\n'));
-let players = LS.get('vgq-players', []);
-const S = { round:0, total:10, listen:10, startMode:'mid', choices:true, pool:[], cur:null, results:[], idx:0,
-            extra:0, start:0, phase:'idle', scores:{}, hist:[], correct:new Set() };
-let yt = null, ytReady = false, stopT = null, barT = null;
-
-if(location.protocol === 'file:') $('fileWarn').classList.remove('hidden');
+$('nameIn').value = LS.get('vgq-name', '');
 $('apiKey').value = LS.get('vgq-key', '');
-
-/* ---------- kurulum ---------- */
-function renderPlayers(){
-  $('pList').innerHTML = players.map((p,i)=>`<span class="chip">${esc(p)}<button data-i="${i}" aria-label="Sil">×</button></span>`).join('')
-    || '<small>Henüz oyuncu yok. En az bir isim ekle.</small>';
-  LS.set('vgq-players', players);
-}
-function addPlayer(){
-  const n = $('pName').value.trim();
-  if(n && !players.includes(n)) players.push(n);
-  $('pName').value = ''; $('pName').focus(); renderPlayers();
-}
-$('pAdd').onclick = addPlayer;
-$('pName').onkeydown = e => { if(e.key === 'Enter'){ e.preventDefault(); addPlayer(); } };
-$('pList').onclick = e => { const b = e.target.closest('button[data-i]'); if(b){ players.splice(+b.dataset.i,1); renderPlayers(); } };
-
-function renderGames(){ $('gList').value = games.join('\n'); $('gCount').textContent = games.length; }
+$('siteUrl').textContent = location.host + location.pathname;
+const renderGames = () => { $('gList').value = games.join('\n'); $('gCount').textContent = games.length; };
 $('gSave').onclick = () => { games = uniq($('gList').value.split('\n')); LS.set('vgq-games', games.join('\n')); renderGames(); };
 $('gReset').onclick = () => { games = uniq(DEFAULT_GAMES.split('\n')); LS.set('vgq-games', null); renderGames(); };
+renderGames();
 
-function show(id){ for(const s of ['setup','game','end']) $(s).classList.toggle('hidden', s !== id); }
+if(!FB_CONFIG.databaseURL){ $('hdrInfo').textContent = 'Firebase ayarı eksik'; }
+firebase.initializeApp(FB_CONFIG);
+const db = firebase.database();
+let offset = 0;
+db.ref('.info/serverTimeOffset').on('value', s => offset = s.val() || 0);
+const now = () => Date.now() + offset;
 
-$('startBtn').onclick = () => {
-  const key = $('apiKey').value.trim();
-  if(!key){ $('setupMsg').textContent = 'Önce YouTube API anahtarını gir.'; return; }
-  if(!players.length){ $('setupMsg').textContent = 'En az bir oyuncu ekle.'; return; }
-  if(games.length < 4){ $('setupMsg').textContent = 'Listede en az 4 oyun olmalı.'; return; }
-  if(!ytReady){ $('setupMsg').textContent = 'YouTube oynatıcısı henüz yüklenmedi, birkaç saniye sonra tekrar dene.'; return; }
-  LS.set('vgq-key', key);
-  $('setupMsg').textContent = '';
-  S.total = +$('rounds').value; S.listen = +$('listen').value;
-  S.startMode = $('startMode').value; S.choices = $('choices').value === '1';
-  S.round = 0; S.hist = []; S.scores = {}; players.forEach(p => S.scores[p] = 0);
-  S.pool = shuffle(games.slice());
-  show('game'); renderBoard();
-  if(yt.unMute) yt.unMute();
-  nextRound();
-};
+/* ===== durum ===== */
+let room = null, code = null, isHost = false;
+let R = { round:null, reveal:null, players:{}, state:null };
+let myAnswer = null, lastKey = '', yt = null, ytReady = false, stopT = null, tickT = null, playWatch = null, unlocked = false;
+// sadece oda kurucusunda
+let H = { pool:[], n:0, total:10, listen:10, startMode:'mid', game:null, results:[], idx:0, correct:-1, timer:null, nextT:null };
 
-/* ---------- YouTube ---------- */
+/* ===== YouTube ===== */
 window.onYouTubeIframeAPIReady = () => {
   yt = new YT.Player('yt', {
     width:'640', height:'360',
     playerVars:{ controls:0, disablekb:1, playsinline:1, rel:0, iv_load_policy:3, fs:0 },
-    events:{ onReady:()=>{ ytReady = true; }, onError:onYtError, onStateChange:onYtState }
+    events:{ onReady:()=>{ ytReady = true; }, onStateChange:onYtState, onError:onYtError }
   });
 };
+function onYtState(e){
+  if(e.data === YT.PlayerState.PLAYING){ unlocked = true; $('unlock').classList.add('hidden'); }
+}
+function onYtError(){
+  if(isHost && R.state === 'play'){ H.idx++; issueRound(); }
+  else setStatus('Bu şarkı bu cihazda açılamadı');
+}
+$('unlockBtn').onclick = () => { if(yt){ yt.unMute(); yt.playVideo(); } $('unlock').classList.add('hidden'); };
 
 async function search(game){
   const cache = LS.get('vgq-cache', {});
   if(cache[game] && cache[game].length) return cache[game];
   const key = LS.get('vgq-key','');
   const q = encodeURIComponent(game + ' OST main theme');
-  const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=8&q=${q}&key=${encodeURIComponent(key)}`;
-  const r = await fetch(url);
+  const r = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&maxResults=8&q=${q}&key=${encodeURIComponent(key)}`);
   const j = await r.json();
   if(j.error){
     const why = (j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || '';
-    if(why === 'quotaExceeded') throw new Error('Günlük YouTube arama hakkı doldu. Yarın sıfırlanır; daha önce çalınan şarkılar yine de çalışır.');
+    if(why === 'quotaExceeded') throw new Error('Günlük YouTube arama hakkı doldu, yarın sıfırlanır.');
     throw new Error('YouTube hatası: ' + j.error.message);
   }
-  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|vs\.?|tier list|acapella|violin|ocarina cover/i;
+  const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin/i;
   const items = (j.items||[]).map(i => ({ id:i.id.videoId, title:decode(i.snippet.title), ch:decode(i.snippet.channelTitle) }));
   const good = items.filter(i => !bad.test(i.title));
   const list = good.concat(items.filter(i => !good.includes(i))).slice(0,6);
@@ -459,132 +448,229 @@ function dropFromCache(game, id){
   if(cache[game]){ cache[game] = cache[game].filter(v => v.id !== id); LS.set('vgq-cache', cache); }
 }
 
-function setStatus(t, spin){ $('status').textContent = t; $('cover').classList.toggle('spin', !!spin); }
-function clearTimers(){ clearTimeout(stopT); clearInterval(barT); }
-function runBar(sec){
-  const t0 = Date.now(); $('barFill').style.width = '0';
-  clearInterval(barT);
-  barT = setInterval(()=>{ const p = Math.min(1,(Date.now()-t0)/(sec*1000)); $('barFill').style.width = (p*100)+'%'; if(p>=1) clearInterval(barT); }, 100);
+/* ===== giriş ===== */
+function getName(msgEl){
+  const n = $('nameIn').value.trim();
+  if(!n){ $(msgEl).textContent = 'Önce adını yaz.'; $('nameIn').focus(); return null; }
+  LS.set('vgq-name', n); return n;
 }
-function listenFor(sec){
-  clearTimers(); runBar(sec);
-  setStatus('Dinle...', true);
-  stopT = setTimeout(()=>{ yt.pauseVideo(); S.phase = 'guess'; setStatus('Tahmin zamanı!'); }, sec*1000);
+function prime(){ // kullanıcı dokunuşuyla sesi açmayı dene
+  try{ if(yt && yt.unMute) yt.unMute(); }catch(e){}
 }
-function updatePoints(){ $('pointLbl').textContent = 'Bu tur: ' + Math.max(1, 3 - S.extra) + ' puan'; }
-
-async function nextRound(){
-  clearTimers();
-  if(S.round >= S.total) return endGame();
-  if(!S.pool.length) S.pool = shuffle(games.slice());
-  S.round++; S.extra = 0; S.correct = new Set(); S.cur = S.pool.pop();
-  $('roundLbl').textContent = `Tur ${S.round}/${S.total}`; updatePoints();
-  $('answer').classList.add('hidden'); $('guessCtl').classList.remove('hidden');
-  $('cover').classList.remove('off'); $('barFill').style.width = '0';
-  renderOptions(false);
-  S.phase = 'loading'; setStatus('Şarkı aranıyor...', true);
+$('joinBtn').onclick = async () => {
+  $('joinMsg').textContent = '';
+  const name = getName('joinMsg'); if(!name) return;
+  const c = $('codeIn').value.trim().toUpperCase();
+  if(c.length !== 4){ $('joinMsg').textContent = 'Kod 4 harfli olmalı.'; return; }
+  prime();
   try{
-    S.results = await search(S.cur); S.idx = 0;
-    playCurrent();
-  }catch(err){
-    S.round--; S.phase = 'error'; setStatus(err.message);
-  }
-}
-function playCurrent(){
-  const v = S.results[S.idx];
-  if(!v){ // bu oyun için çalınabilir video yok: turu yakmadan başka oyuna geç
-    S.round--; setStatus('Bu oyunun müziği bulunamadı, başka oyun seçiliyor...', true);
-    setTimeout(nextRound, 900); return;
-  }
-  S.phase = 'loading'; setStatus('Yükleniyor...', true);
-  S.start = S.startMode === 'mid' ? 20 + Math.floor(Math.random()*40) : 0;
-  yt.loadVideoById({ videoId:v.id, startSeconds:S.start });
-}
-function onYtState(e){
-  if(e.data === YT.PlayerState.PLAYING && S.phase === 'loading'){
-    const d = yt.getDuration();
-    if(d && S.start + S.listen + 3 > d){ S.start = Math.max(0, Math.floor(d/3)); yt.seekTo(S.start, true); }
-    S.phase = 'listen'; listenFor(S.listen);
-  }
-}
-function onYtError(){
-  const v = S.results[S.idx];
-  if(v) dropFromCache(S.cur, v.id);
-  S.idx++; playCurrent();
-}
-
-function renderOptions(reveal){
-  const box = $('opts');
-  if(!S.choices){ box.classList.add('hidden'); return; }
-  if(!reveal){
-    const others = shuffle(games.filter(g => g !== S.cur)).slice(0,3);
-    S.opts = shuffle([S.cur, ...others]);
-  }
-  box.innerHTML = S.opts.map((g,i)=>`<div class="opt${reveal && g===S.cur ? ' right':''}"><b>${'ABCD'[i]}</b>${esc(g)}</div>`).join('');
-  box.classList.remove('hidden');
-}
-
-/* ---------- butonlar ---------- */
-function replay(){ if(S.phase!=='guess' && S.phase!=='listen') return; yt.seekTo(S.start, true); yt.playVideo(); S.phase='listen'; listenFor(S.listen); }
-function extra(){ if(S.phase!=='guess') return; S.extra++; updatePoints(); yt.playVideo(); S.phase='listen'; listenFor(5); }
-function reveal(){
-  if(S.phase!=='guess' && S.phase!=='listen') return;
-  clearTimers(); S.phase = 'reveal';
-  $('cover').classList.add('off'); yt.playVideo();
-  const v = S.results[S.idx] || {};
-  $('ansName').textContent = S.cur;
-  $('ansTitle').textContent = v.title ? v.title + ' · ' + v.ch : '';
-  $('who').innerHTML = players.map((p,i)=>`<button data-i="${i}">${esc(p)}</button>`).join('');
-  $('guessCtl').classList.add('hidden'); $('answer').classList.remove('hidden');
-  renderOptions(true);
-}
-function award(){
-  if(S.phase !== 'reveal') return;
-  const pts = Math.max(1, 3 - S.extra);
-  S.correct.forEach(p => S.scores[p] += pts);
-  S.hist.unshift(`${S.round}. ${S.cur}: ${S.correct.size ? [...S.correct].join(', ') + ' (+' + pts + ')' : 'kimse bilemedi'}`);
-  yt.stopVideo(); renderBoard(); nextRound();
-}
-$('replayBtn').onclick = replay;
-$('extraBtn').onclick = extra;
-$('wrongBtn').onclick = () => { if(S.phase==='idle'||S.phase==='reveal') return; clearTimers(); const v=S.results[S.idx]; if(v) dropFromCache(S.cur, v.id); S.idx++; playCurrent(); };
-$('revealBtn').onclick = reveal;
-$('nextBtn').onclick = award;
-$('who').onclick = e => {
-  const b = e.target.closest('button[data-i]'); if(!b) return;
-  const p = players[+b.dataset.i];
-  S.correct.has(p) ? S.correct.delete(p) : S.correct.add(p);
-  b.classList.toggle('on', S.correct.has(p));
+    const s = await db.ref('rooms/' + c + '/state').get();
+    if(!s.exists()){ $('joinMsg').textContent = 'Bu kodla bir oda yok.'; return; }
+    await enterRoom(c, name, false);
+  }catch(e){ $('joinMsg').textContent = 'Bağlantı hatası: ' + e.message; }
 };
-$('cover').onclick = () => { if(S.phase === 'error') nextRound(); };
-$('quitBtn').onclick = () => { if(yt) yt.stopVideo(); endGame(); };
-$('againBtn').onclick = () => $('startBtn').click();
-$('setupBtn').onclick = () => show('setup');
-document.addEventListener('keydown', e => {
-  if($('game').classList.contains('hidden') || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-  if(e.code === 'Space'){ e.preventDefault(); S.phase === 'reveal' ? award() : reveal(); }
-  else if(e.key === 'r' || e.key === 'R') replay();
-  else if(e.key === 'e' || e.key === 'E') extra();
-});
+$('codeIn').onkeydown = e => { if(e.key === 'Enter') $('joinBtn').click(); };
+$('createBtn').onclick = async () => {
+  $('createMsg').textContent = '';
+  const name = getName('createMsg'); if(!name) return;
+  const key = $('apiKey').value.trim();
+  if(!key){ $('createMsg').textContent = 'YouTube API anahtarını gir.'; return; }
+  if(games.length < 4){ $('createMsg').textContent = 'Listede en az 4 oyun olmalı.'; return; }
+  LS.set('vgq-key', key);
+  prime();
+  const letters = 'ABCDEFGHJKLMNPRSTUVYZ';
+  try{
+    let c, tries = 0;
+    do{ c = Array.from({length:4}, () => letters[Math.floor(Math.random()*letters.length)]).join(''); tries++; }
+    while((await db.ref('rooms/' + c + '/state').get()).exists() && tries < 10);
+    H.total = +$('rounds').value; H.listen = +$('listen').value; H.startMode = $('startMode').value;
+    await db.ref('rooms/' + c).set({ host:pid, state:'lobby', created:firebase.database.ServerValue.TIMESTAMP, total:H.total });
+    await enterRoom(c, name, true);
+  }catch(e){ $('createMsg').textContent = 'Oda kurulamadı: ' + e.message; }
+};
 
-function ranked(){ return players.map(p => [p, S.scores[p]||0]).sort((a,b)=>b[1]-a[1]); }
-function renderBoard(){
-  const r = ranked(), top = r.length ? r[0][1] : 0;
-  $('board').innerHTML = r.map(([p,s])=>`<tr class="${s===top && s>0 ? 'lead':''}"><td>${esc(p)}</td><td>${s}</td></tr>`).join('');
-  $('hist').innerHTML = S.hist.map(h=>`<div>${esc(h)}</div>`).join('');
-}
-function endGame(){
-  clearTimers(); S.phase = 'idle';
-  const r = ranked();
-  const best = r.length ? r[0][1] : 0;
-  const winners = r.filter(x => x[1] === best).map(x => x[0]);
-  $('winner').textContent = best > 0 ? (winners.length > 1 ? 'Berabere: ' + winners.join(', ') : winners[0] + ' kazandı!') : 'Kimse puan alamadı';
-  $('finalBoard').innerHTML = r.map(([p,s],i)=>`<tr><td>${i+1}. ${esc(p)}</td><td>${s}</td></tr>`).join('');
-  show('end');
+async function enterRoom(c, name, host){
+  code = c; isHost = host; room = db.ref('rooms/' + c);
+  const me = room.child('players/' + pid);
+  const old = (await me.get()).val();
+  await me.set({ name, score: old ? old.score || 0 : 0, online:true });
+  me.child('online').onDisconnect().set(false);
+  if(host) room.child('host').set(pid);
+  $('lobbyCode').textContent = c;
+  $('lobbyHost').classList.toggle('hidden', !host);
+  $('lobbyWait').classList.toggle('hidden', host);
+  $('hostBar').classList.toggle('hidden', !host);
+  $('againBtn').classList.toggle('hidden', !host);
+  room.child('players').on('value', s => { R.players = s.val() || {}; renderPlayers(); });
+  room.child('state').on('value', s => { R.state = s.val(); onState(); });
+  room.child('round').on('value', s => { R.round = s.val(); onRound(); });
+  room.child('reveal').on('value', s => { R.reveal = s.val(); onReveal(); });
+  show('lobby');
 }
 
-renderPlayers(); renderGames();
-$('hdrInfo').textContent = games.length + ' oyun hazır';
+/* ===== ekranlar ===== */
+function ranked(){ return Object.entries(R.players).map(([id,p]) => ({ id, ...p })).sort((a,b) => (b.score||0) - (a.score||0)); }
+function renderPlayers(){
+  const list = ranked();
+  $('lobbyPlayers').innerHTML = list.map(p => `<span class="${p.online ? '' : 'off'}">${esc(p.name)}</span>`).join('');
+  $('board').innerHTML = list.map(p => `<tr class="${p.id === pid ? 'me' : ''}"><td>${esc(p.name)}${p.online ? '' : ' <small>(çıktı)</small>'}</td><td class="d">${R.reveal && p.last ? '+' + p.last : ''}</td><td class="n">${p.score||0}</td></tr>`).join('');
+  $('finalBoard').innerHTML = list.map((p,i) => `<tr><td>${i+1}. ${esc(p.name)}</td><td class="n">${p.score||0}</td></tr>`).join('');
+}
+function onState(){
+  if(R.state === 'lobby') show('lobby');
+  else if(R.state === 'play' || R.state === 'reveal') show('game');
+  else if(R.state === 'end'){
+    clearTimers(); try{ yt.stopVideo(); }catch(e){}
+    const list = ranked(), best = list.length ? list[0].score || 0 : 0;
+    const w = list.filter(p => (p.score||0) === best).map(p => p.name);
+    $('winner').textContent = best > 0 ? (w.length > 1 ? 'Berabere: ' + w.join(', ') : w[0] + ' kazandı!') : 'Kimse puan alamadı';
+    show('end');
+  }
+}
+function setStatus(t, spin){ $('status').textContent = t; $('cover').classList.toggle('spin', !!spin); }
+function clearTimers(){ clearTimeout(stopT); clearInterval(tickT); clearTimeout(playWatch); }
+
+function onRound(){
+  const r = R.round; if(!r) return;
+  const key = r.n + ':' + r.videoId;
+  if(key === lastKey) return;
+  lastKey = key; myAnswer = null; clearTimers();
+  $('roundLbl').textContent = `Tur ${r.n}/${r.total}`;
+  $('result').classList.add('hidden');
+  $('cover').classList.remove('off');
+  $('barFill').style.width = '0';
+  renderOptions();
+  setStatus('Hazır ol...', true);
+  if(ytReady){ yt.cueVideoById({ videoId:r.videoId, startSeconds:r.start }); }
+  const wait = Math.max(0, r.startAt - now());
+  stopT = setTimeout(() => startListening(r), wait);
+  tickT = setInterval(() => {
+    const left = Math.max(0, Math.ceil((r.deadline - now())/1000));
+    $('timeLbl').textContent = now() < r.startAt ? 'Başlıyor...' : left + ' sn';
+    const p = Math.min(1, Math.max(0, (now() - r.startAt) / (r.listen*1000)));
+    $('barFill').style.width = (p*100) + '%';
+    if(left <= 0) clearInterval(tickT);
+  }, 200);
+}
+function startListening(r){
+  if(R.round !== r || !ytReady) return;
+  try{ yt.seekTo(r.start, true); yt.playVideo(); }catch(e){}
+  setStatus('Dinle ve seç!', true);
+  enableOptions(true);
+  playWatch = setTimeout(() => { if(!unlocked || yt.getPlayerState() !== YT.PlayerState.PLAYING) $('unlock').classList.remove('hidden'); }, 2500);
+  stopT = setTimeout(() => { if(!R.reveal || R.reveal.n !== r.n){ try{ yt.pauseVideo(); }catch(e){} setStatus(myAnswer === null ? 'Süre daralıyor, seç!' : 'Cevabın alındı'); } }, r.listen*1000);
+}
+function renderOptions(){
+  const r = R.round;
+  $('opts').innerHTML = r.options.map((g,i) => `<button class="opt" data-i="${i}" disabled><b>${'ABCD'[i]}</b>${esc(g)}</button>`).join('');
+}
+function enableOptions(on){ for(const b of $('opts').querySelectorAll('.opt')) b.disabled = !on || myAnswer !== null; }
+$('opts').onclick = e => {
+  const b = e.target.closest('.opt'); if(!b || b.disabled) return;
+  const r = R.round; if(!r || now() > r.deadline || (R.reveal && R.reveal.n === r.n)) return;
+  myAnswer = +b.dataset.i;
+  b.classList.add('picked'); enableOptions(false);
+  room.child('answers/' + r.n + '/' + pid).set({ i:myAnswer, t:Math.max(0, now() - r.startAt) });
+  setStatus('Cevabın alındı, bekleniyor...', true);
+};
+function onReveal(){
+  const v = R.reveal, r = R.round;
+  renderPlayers();
+  if(!v || !r || v.n !== r.n) return;
+  clearTimers(); $('unlock').classList.add('hidden');
+  $('cover').classList.add('off');
+  try{ yt.playVideo(); }catch(e){}
+  $('timeLbl').textContent = 'Cevap';
+  for(const b of $('opts').querySelectorAll('.opt')){
+    const i = +b.dataset.i; b.disabled = true;
+    if(i === v.idx) b.classList.add('right');
+    else if(i === myAnswer) b.classList.add('wrong');
+  }
+  const mine = R.players[pid] && R.players[pid].last;
+  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : myAnswer === v.idx ? 'Doğru! +' + (mine||0) + ' puan' : 'Yanlış'}</div>`;
+  $('result').classList.remove('hidden');
+}
+
+/* ===== oda kurucusu (oyunu yöneten) ===== */
+$('startBtn').onclick = () => { prime(); hostStart(); };
+$('againBtn').onclick = async () => {
+  const ups = {};
+  for(const id in R.players){ ups['players/' + id + '/score'] = 0; ups['players/' + id + '/last'] = 0; }
+  ups.answers = null; ups.round = null; ups.reveal = null; ups.state = 'lobby';
+  lastKey = '';
+  await room.update(ups);
+};
+$('leaveBtn').onclick = () => location.reload();
+function hostStart(){
+  H.pool = shuffle(games.slice()); H.n = 0;
+  room.update({ state:'play', total:H.total });
+  hostNext();
+}
+async function hostNext(){
+  clearInterval(H.timer); clearTimeout(H.nextT);
+  if(H.n >= H.total){ room.update({ state:'end' }); return; }
+  if(!H.pool.length) H.pool = shuffle(games.slice());
+  H.n++; H.game = H.pool.pop();
+  setStatus('Şarkı aranıyor...', true);
+  try{
+    H.results = await search(H.game); H.idx = 0;
+    issueRound();
+  }catch(e){
+    H.n--; setStatus(e.message);
+  }
+}
+function issueRound(){
+  clearInterval(H.timer); clearTimeout(H.nextT);
+  const v = H.results[H.idx];
+  if(!v){ H.n--; hostNext(); return; }
+  const others = shuffle(games.filter(g => g !== H.game)).slice(0,3);
+  const options = shuffle([H.game, ...others]);
+  H.correct = options.indexOf(H.game);
+  const start = H.startMode === 'mid' ? 20 + Math.floor(Math.random()*35) : 0;
+  const startAt = now() + 3500;
+  const deadline = startAt + (H.listen + 10) * 1000;
+  const ups = {};
+  ups['answers/' + H.n] = null;
+  ups.reveal = null;
+  ups.state = 'play';
+  ups.round = { n:H.n, total:H.total, videoId:v.id, start, listen:H.listen, options, startAt, deadline };
+  room.update(ups);
+  H.timer = setInterval(hostCheck, 500);
+}
+async function hostCheck(){
+  const r = R.round; if(!r || r.n !== H.n) return;
+  const online = Object.entries(R.players).filter(([,p]) => p.online).map(([id]) => id);
+  const ans = (await room.child('answers/' + H.n).get()).val() || {};
+  const all = online.length > 0 && online.every(id => ans[id]);
+  if(now() >= r.deadline || all) hostReveal(ans);
+}
+async function hostReveal(ansIn){
+  clearInterval(H.timer);
+  const r = R.round; if(!r || r.n !== H.n) return;
+  const ans = ansIn || (await room.child('answers/' + H.n).get()).val() || {};
+  const span = r.deadline - r.startAt;
+  const ups = {};
+  for(const id in R.players){
+    const a = ans[id];
+    const pts = a && a.i === H.correct ? 500 + Math.round(500 * Math.max(0, 1 - a.t / span)) : 0;
+    ups['players/' + id + '/score'] = (R.players[id].score || 0) + pts;
+    ups['players/' + id + '/last'] = pts;
+  }
+  const v = H.results[H.idx] || {};
+  ups.reveal = { n:H.n, idx:H.correct, game:H.game, title:v.title || '' };
+  ups.state = 'reveal';
+  await room.update(ups);
+  H.nextT = setTimeout(hostNext, 9000);
+}
+$('skipBtn').onclick = () => {
+  if(R.state !== 'play') return;
+  const v = H.results[H.idx]; if(v) dropFromCache(H.game, v.id);
+  H.idx++; issueRound();
+};
+$('nextBtn').onclick = () => { if(R.state === 'reveal') hostNext(); else if(R.state === 'play') hostReveal(); };
+$('endBtn').onclick = () => { clearInterval(H.timer); clearTimeout(H.nextT); room.update({ state:'end' }); };
+
+$('hdrInfo').textContent = $('hdrInfo').textContent || games.length + ' oyun';
 }
 </script>
 <script src="https://www.youtube.com/iframe_api"></script>
