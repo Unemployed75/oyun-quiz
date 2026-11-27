@@ -88,7 +88,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
 .alist div{padding:8px 12px;border-radius:10px;background:#0c1524;margin-top:6px;display:flex;justify-content:space-between;gap:10px}
 .alist div.ok{border-left:4px solid var(--ok)}
 .alist div.no{border-left:4px solid var(--bad)}
-.alist.host div{cursor:pointer}
+.alist .fix{min-height:30px;padding:3px 10px;font-size:13px;margin-left:8px}
 .teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
 .team{background:#0c1524;border:2px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left}
 .team h3{margin:0 0 6px;font-size:17px}
@@ -1228,7 +1228,7 @@ function onReveal(){
   }
   const mine = R.players[pid] && R.players[pid].last;
   $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine ? 'Doğru! +' + mine + ' puan' : 'Yanlış'}</div>` +
-    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div data-k="${k}" class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}${a.j ? ' (joker)' : ''}</span><span>${a.ok ? '+' + a.pts : '✗'}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen cevaba tıklayıp düzeltebilirsin.</small>' : ''}</div>` : '') +
+    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}${a.j ? ' (joker)' : ''}${a.fx ? ' <small>(elle düzeltildi)</small>' : ''}</span><span>${a.ok ? '+' + a.pts : '✗'}${isHost ? `<button class="fix" data-k="${k}">${a.ok ? 'Yanlış say' : 'Doğru say'}</button>` : ''}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen bir cevabı yanındaki düğmeyle düzeltebilirsin.</small>' : ''}</div>` : '') +
     (v.vid ? `<div class="vote">Bu parça iyi bir seçim miydi? <button data-v="up" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'up' ? 'on' : ''}">👍</button><button data-v="down" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'down' ? 'on' : ''}">👎</button></div>` : '');
   $('result').classList.remove('hidden');
 }
@@ -1327,12 +1327,12 @@ async function hostReveal(ansIn){
   H.nextT = setTimeout(hostNext, r.ansMode === 'text' ? 14000 : 9000);
 }
 $('result').onclick = async e => {
-  const d = e.target.closest('.alist div[data-k]');
+  const d = e.target.closest('.alist button.fix');
   if(!d || !isHost || !R.reveal || !R.reveal.list || R.state !== 'reveal') return;
   const k = +d.dataset.k, it = R.reveal.list[k], r = R.round; if(!it || !r) return;
   const ok = !it.ok, pts = ok ? Math.round(speedPts(it.t, r.deadline - r.startAt) * (it.j ? 0.5 : 1)) : 0;
   const ups = {};
-  ups['reveal/list/' + k + '/ok'] = ok; ups['reveal/list/' + k + '/pts'] = pts;
+  ups['reveal/list/' + k + '/ok'] = ok; ups['reveal/list/' + k + '/pts'] = pts; ups['reveal/list/' + k + '/fx'] = 1;
   ups['players/' + it.id + '/score'] = ((R.players[it.id] || {}).score || 0) - (it.pts || 0) + pts;
   ups['players/' + it.id + '/last'] = pts;
   clearTimeout(H.nextT); H.nextT = setTimeout(hostNext, 10000);
