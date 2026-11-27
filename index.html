@@ -36,6 +36,10 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .plist{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .plist span{background:#0c1524;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600}
 .plist span.off{opacity:.4}
+.sugg{position:absolute;left:0;right:0;top:100%;margin-top:4px;background:#0c1524;border:1px solid var(--line);border-radius:10px;z-index:30;max-height:270px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.sugg div{padding:10px 12px;cursor:pointer;border-bottom:1px solid #1a2840}
+.sugg div:last-child{border-bottom:0}
+.sugg div.on,.sugg div:hover{background:#24385c}
 .gchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;max-height:380px;overflow:auto;padding:2px}
 .gchips button{min-height:34px;padding:5px 12px;border-radius:999px;font:500 14px Rubik,sans-serif;background:#163a2b;border:1px solid #2c6b4c;color:var(--ink)}
 .gchips button:hover{background:#1d4a37}
@@ -183,7 +187,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
         <div class="unlock hidden" id="unlock"><button class="main" id="unlockBtn">Sesi açmak için dokun</button></div>
       </div>
       <div class="opts" id="opts"></div>
-      <div class="row hidden" id="textBox" style="margin-top:14px"><div><input id="textIn" placeholder="Oyunun adını yaz" autocomplete="off" maxlength="60"></div><button class="main" id="textBtn" style="flex:0 0 auto">Gönder</button></div>
+      <div class="row hidden" id="textBox" style="margin-top:14px"><div style="position:relative"><input id="textIn" placeholder="Oyunun adını yaz" autocomplete="off" maxlength="60"><div id="sugg" class="sugg hidden"></div></div><button class="main" id="textBtn" style="flex:0 0 auto">Gönder</button></div>
       <div class="result hidden" id="result"></div>
       <div class="hostbar hidden" id="hostBar">
         <button id="skipBtn">Yanlış şarkı / değiştir</button>
@@ -1013,7 +1017,7 @@ function onRound(){
   renderOptions();
   const txtMode = r.ansMode === 'text';
   $('opts').classList.toggle('hidden', txtMode); $('textBox').classList.toggle('hidden', !txtMode);
-  $('textIn').value = ''; $('textIn').disabled = true; $('textBtn').disabled = true;
+  hideSugg(); $('textIn').value = ''; $('textIn').disabled = true; $('textBtn').disabled = true;
   setStatus('Hazır ol...', true);
   if(ytReady){ yt.cueVideoById({ videoId:r.videoId, startSeconds:r.start }); }
   const wait = Math.max(0, r.startAt - now());
@@ -1069,7 +1073,29 @@ $('result').addEventListener('click', e => {
   b.classList.add('on');
 });
 $('textBtn').onclick = sendText;
-$('textIn').onkeydown = e => { if(e.key === 'Enter') sendText(); };
+// Yazarak modda oyun adı önerileri (arama kutusu gibi)
+let suggL = [], suggI = -1;
+function hideSugg(){ $('sugg').classList.add('hidden'); suggL = []; suggI = -1; }
+function showSugg(){
+  const q = norm($('textIn').value), qs = q.replace(/ /g, '');
+  if(q.length < 2 || $('textIn').disabled){ hideSugg(); return; }
+  const sc = g => { const n = norm(g); if(n.startsWith(q)) return 0; if((' ' + n).includes(' ' + q)) return 1; if(n.includes(q) || n.replace(/ /g, '').includes(qs)) return 2; return 9; };
+  suggL = uniq(games).map(g => [g, sc(g)]).filter(x => x[1] < 9).sort((a,b) => a[1] - b[1] || a[0].length - b[0].length).slice(0, 7).map(x => x[0]);
+  suggI = -1;
+  if(!suggL.length){ hideSugg(); return; }
+  $('sugg').innerHTML = suggL.map((g, i) => '<div data-i="' + i + '">' + esc(g) + '</div>').join('');
+  $('sugg').classList.remove('hidden');
+}
+function pickSugg(i){ $('textIn').value = suggL[i]; hideSugg(); $('textIn').focus(); }
+$('textIn').oninput = showSugg;
+$('textIn').onblur = () => setTimeout(hideSugg, 150);
+$('sugg').onpointerdown = e => { const d = e.target.closest('[data-i]'); if(!d) return; e.preventDefault(); pickSugg(+d.dataset.i); };
+$('textIn').onkeydown = e => {
+  const open = suggL.length > 0 && !$('sugg').classList.contains('hidden');
+  if(open && (e.key === 'ArrowDown' || e.key === 'ArrowUp')){ e.preventDefault(); suggI = (suggI + (e.key === 'ArrowDown' ? 1 : -1) + suggL.length) % suggL.length; [...$('sugg').children].forEach((c, i) => c.classList.toggle('on', i === suggI)); return; }
+  if(e.key === 'Escape'){ hideSugg(); return; }
+  if(e.key === 'Enter'){ if(open && suggI >= 0){ e.preventDefault(); pickSugg(suggI); return; } hideSugg(); sendText(); }
+};
 const ROM = {ii:'2',iii:'3',iv:'4',v:'5',vi:'6',vii:'7',viii:'8',ix:'9',x:'10',xi:'11',xii:'12',xiii:'13',xiv:'14',xv:'15'};
 function norm(s){
   return String(s).toLowerCase().replace(/[ıi̇]/g,'i').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ö/g,'o').replace(/ç/g,'c')
