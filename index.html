@@ -454,6 +454,13 @@ let volume = LS.get('vgq-vol', 50);
 let pid = LS.get('vgq-pid', null);
 if(!pid){ pid = Math.random().toString(36).slice(2,10); LS.set('vgq-pid', pid); }
 let games = uniq((LS.get('vgq-games', null) || DEFAULT_GAMES).split('\n'));
+// Zorluğa göre oyun havuzu: Kolay = en bilinen oyunlar, Normal = niş olanlar hariç, Zor = hepsi
+const EASY_GAMES = new Set(["Super Mario Bros", "Super Mario 64", "Super Mario Odyssey", "Super Mario Galaxy", "Super Mario World", "New Super Mario Bros", "The Legend of Zelda Ocarina of Time", "The Legend of Zelda Breath of the Wild", "Tetris", "Pokemon Red and Blue", "Sonic the Hedgehog", "Mario Kart 8", "Mario Kart Wii", "Super Smash Bros Brawl", "Donkey Kong Country", "Minecraft", "Undertale", "Hollow Knight", "Cuphead", "Terraria", "Stardew Valley", "Halo", "Call of Duty Modern Warfare 2", "Call of Duty Black Ops Zombies", "Call of Duty Black Ops", "Battlefield 1", "Doom 2016", "Doom Eternal", "Half-Life 2", "Portal", "Portal 2", "Team Fortress 2", "Counter-Strike Global Offensive", "Left 4 Dead 2", "Fallout 4", "The Elder Scrolls V: Skyrim", "The Witcher 3", "Cyberpunk 2077", "Red Dead Redemption 2", "GTA San Andreas", "GTA Vice City", "GTA IV", "GTA V", "Mafia", "Assassin's Creed II", "Assassin's Creed Black Flag", "Far Cry 3", "Prince of Persia", "Uncharted 4", "The Last of Us", "God of War 2018", "Spider-Man PS4", "Elden Ring", "Dark Souls III", "Five Nights at Freddy's", "Mortal Kombat", "Tekken 3", "Crash Bandicoot", "Need for Speed Most Wanted", "Need for Speed Underground 2", "FIFA 14", "League of Legends", "World of Warcraft", "Warcraft III", "Age of Empires II", "Command and Conquer Red Alert", "Heroes of Might and Magic III", "Mount and Blade Warband", "Clash of Clans", "Angry Birds", "Plants vs Zombies", "Fruit Ninja", "Subway Surfers", "Geometry Dash", "Among Us", "Fortnite", "PUBG", "Valorant", "Overwatch", "The Sims 2", "Pac-Man", "Wii Sports", "Jetpack Joyride", "Rocket League", "Street Fighter II", "Fall Guys"]);
+const HARD_GAMES = new Set(["Xenoblade Chronicles", "Fire Emblem Three Houses", "Final Fantasy XIV", "Final Fantasy VI", "Chrono Trigger", "Persona 4", "Deltarune", "Shovel Knight", "Katana Zero", "Dragon Age Origins", "Mass Effect", "Shadow of the Colossus", "Journey", "Metal Gear Solid 3 Snake Eater", "Silent Hill 2", "Civilization IV Baba Yetu", "Outer Wilds", "Bastion", "Transistor", "Hyper Light Drifter", "Risk of Rain 2", "Fez", "Slay the Spire", "Disco Elysium", "Death Stranding", "Hollow Knight Silksong", "Honkai Star Rail", "Professor Layton", "Ace Attorney", "Katamari Damacy", "Jet Set Radio", "Persona 3 Reload", "Kirby Super Star", "Metroid Prime", "Splatoon 2", "Kingdom Hearts II", "Bayonetta 2", "Bayonetta 3", "Frostpunk", "Rome Total War", "Mega Man 2", "Mega Man 3", "Yoshi's Island", "Super Mario Bros 2", "Kingdom Hearts III", "HuniePop", "Magicka 2", "Kenshi", "Duke Nukem", "Ultima Online", "XCOM Enemy Unknown", "Kirby's Dream Land", "FIFA 99", "Super Metroid", "Donkey Kong Country 2", "Castlevania Symphony of the Night", "Grim Fandango", "SimCity 4", "Monster Hunter Rise", "Warframe"]);
+function gamesFor(diff){
+  const list = diff === 'easy' ? games.filter(g => EASY_GAMES.has(g)) : diff === 'hard' ? games.slice() : games.filter(g => !HARD_GAMES.has(g));
+  return list.length >= 8 ? list : games.slice();
+}
 $('nameIn').value = LS.get('vgq-name', '');
 $('apiKey').value = LS.get('vgq-key', '');
 if(YT_KEY){ const k = $('apiKey'); [k.previousElementSibling, k, k.nextElementSibling].forEach(el => el.classList.add('hidden')); }
@@ -1073,14 +1080,14 @@ $('againBtn').onclick = async () => {
 };
 $('leaveBtn').onclick = () => location.reload();
 function hostStart(){
-  H.pool = shuffle(games.slice()); H.n = 0;
+  H.pool = shuffle(gamesFor(H.diff)); H.n = 0;
   room.update({ state:'play', total:H.total });
   hostNext();
 }
 async function hostNext(){
   clearInterval(H.timer); clearTimeout(H.nextT);
   if(H.n >= H.total){ room.update({ state:'end' }); return; }
-  if(!H.pool.length) H.pool = shuffle(games.slice());
+  if(!H.pool.length) H.pool = shuffle(gamesFor(H.diff));
   H.n++; H.game = H.pool.pop();
   setStatus('Şarkı aranıyor...', true);
   try{
@@ -1094,7 +1101,8 @@ async function issueRound(){
   clearInterval(H.timer); clearTimeout(H.nextT);
   const v = H.results[H.idx];
   if(!v || !v.id){ H.n--; hostNext(); return; }
-  const others = shuffle(games.filter(g => g !== H.game)).slice(0,3);
+  let others = shuffle(gamesFor(H.diff).filter(g => g !== H.game)).slice(0,3);
+  if(others.length < 3) others = shuffle(games.filter(g => g !== H.game)).slice(0,3);
   const options = shuffle([H.game, ...others]);
   H.correct = options.indexOf(H.game);
   const coverMode = H.mode === 'cover';
