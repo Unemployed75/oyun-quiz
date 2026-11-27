@@ -63,13 +63,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .bar i{display:block;height:100%;width:0;background:var(--acc)}
 .top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .pill{background:#0c1524;border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-weight:600}
-.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+.opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:14px}
 @media(max-width:560px){.opts{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .opt{min-height:52px;text-align:left;background:#0c1524;border:2px solid var(--line);font-size:15px;padding:8px 12px;line-height:1.25}
 .opt b{color:var(--acc);margin-right:8px}
 .opt.picked{border-color:var(--blue);background:#13305a}
 .opt.right{border-color:var(--ok);background:#0f3a2c}
 .opt.wrong{border-color:var(--bad);background:#3a1620}
+.opt.part{border-color:#e0b020;background:#3a3010}
 .result{text-align:center;margin-top:14px;font-size:18px;font-weight:700}
 .result .name{font-size:clamp(24px,5vw,38px);font-weight:800;color:var(--acc);line-height:1.15}
 .hostbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
@@ -1169,7 +1170,7 @@ function startListening(r){
 }
 function renderOptions(){
   const r = R.round;
-  $('opts').innerHTML = r.options.map((g,i) => `<button class="opt" data-i="${i}" disabled><b>${'ABCDEFGHIJKL'[i]}</b>${esc(g)}</button>`).join('');
+  $('opts').innerHTML = r.options.map((g,i) => `<button class="opt" data-i="${i}" disabled><b>${'ABCDEFGHIJKLMNOP'[i]}</b>${esc(g)}</button>`).join('');
 }
 function enableOptions(on){
   for(const b of $('opts').querySelectorAll('.opt')) b.disabled = !on || myAnswer !== null || b.classList.contains('elim');
@@ -1276,6 +1277,167 @@ function isCorrect(ans, game){
   return cands.some(c => { if(a === c || aS === c.replace(/ /g,'') || (c.length >= 4 && lev(a, c) <= Math.max(1, Math.floor(c.length * 0.2)))) return true;
     const c0 = noNum(c); return c0 !== c && a0.length >= 4 && c0.length >= 4 && (a0 === c0 || lev(a0, c0) <= Math.floor(c0.length * 0.2)); });
 }
+// Franchise / seri sınıflandırması: tam oyun 100%, aynı seri 80%, aynı franchise 60%
+const FR_RULES = [
+ ['Mario', /\b(mario|luigi|yoshi|wario|warioware|princess peach)\b/, [['Yoshi', /yoshi/], ['Luigi', /luigi s mansion/], ['Wario', /wario/], ['Mario Kart', /mario kart/], ['Mario Party', /mario party/], ['Paper Mario', /paper mario|mario and luigi|mario luigi/], ['Mario Spor', /mario (tennis|golf|strikers)|mario rabbids/], ['3D Mario', /super mario (64|sunshine|galaxy|odyssey|3d)/], ['2D Mario', /super mario (bros|world|land|wonder)|new super mario|^mario$/]]],
+ ['Zelda', /\bzelda\b|hyrule/, [['Hyrule Warriors', /hyrule warriors/], ['3D Zelda', /ocarina|majora|wind waker|twilight princess|skyward|breath of wild|tears of kingdom/], ['2D Zelda', /link to past|link s awakening|minish|oracle of|link between|phantom hourglass|spirit tracks|echoes of wisdom/]]],
+ ['Pokemon', /\bpokemon\b/, [['Pokemon ana seri', /pokemon (red|blue|yellow|gold|silver|crystal|ruby|sapphire|emerald|firered|leafgreen|diamond|pearl|platinum|heartgold|soulsilver|black|white|x|sun|moon|sword|shield|scarlet|violet|omega|legends)/]]],
+ ['Sonic', /\bsonic\b/, [['Sonic yarış', /racing|all stars/], ['Sonic', /sonic/]]],
+ ['Donkey Kong', /donkey kong|diddy/, [['Donkey Kong Country', /country/]]],
+ ['Kirby', /\bkirby\b/, [['Kirby', /kirby/]]],
+ ['Metroid', /\bmetroid\b/, [['Metroid Prime', /prime/], ['2D Metroid', /metroid/]]],
+ ['Final Fantasy', /final fantasy|dissidia|crisis core|\bff\b/, [['FF Tactics', /tactics/], ['FF Online', /final fantasy 14/], ['FF yan oyun', /dissidia|crisis core/], ['Final Fantasy ana seri', /final fantasy|\bff\b/]]],
+ ['Kingdom Hearts', /kingdom hearts/, [['Kingdom Hearts', /kingdom hearts/]]],
+ ['Megami Tensei', /persona|shin megami|\bsmt\b/, [['Persona', /persona/], ['Shin Megami Tensei', /shin megami|\bsmt\b/]]],
+ ['Dragon Quest', /dragon quest/, [['Dragon Quest', /dragon quest/]]],
+ ['Xeno', /xenoblade|xenogears/, [['Xenoblade', /xenoblade/], ['Xenogears', /xenogears/]]],
+ ['Fire Emblem', /fire emblem/, [['Fire Emblem', /fire emblem/]]],
+ ['Halo', /\bhalo\b/, [['Halo', /halo/]]],
+ ['Gears of War', /\bgears\b/, [['Gears of War', /gears/]]],
+ ['Call of Duty', /call of duty|\bcod\b/, [['Modern Warfare', /modern warfare|call of duty 4|\bmw\b/], ['Black Ops', /black ops/], ['Warzone', /warzone/]]],
+ ['Battlefield', /battlefield/, [['Bad Company', /bad company/], ['Battlefield', /battlefield/]]],
+ ['Doom', /\bdoom\b/, [['Modern Doom', /doom (2016|eternal)/], ['Klasik Doom', /doom/]]],
+ ['Half-Life / Portal', /half life|black mesa|\bportal\b/, [['Half-Life', /half life|black mesa/], ['Portal', /portal/]]],
+ ['Counter-Strike', /counter strike|\bcs ?go\b|\bcs 2\b|\bcs 1 6\b/, [['Counter-Strike', /./]]],
+ ['Left 4 Dead', /left 4 dead|\bl4d\b/, [['Left 4 Dead', /./]]],
+ ['Team Fortress', /team fortress|\btf2\b/, [['Team Fortress', /./]]],
+ ['BioShock', /bioshock/, [['BioShock', /./]]],
+ ['Fallout', /fallout/, [['Klasik Fallout', /fallout (1997|2)$|fallout 1997/], ['3D Fallout', /fallout/]]],
+ ['The Elder Scrolls', /elder scrolls|skyrim|oblivion|morrowind|daggerfall/, [['Elder Scrolls Online', /online/], ['The Elder Scrolls', /./]]],
+ ['Mass Effect', /mass effect/, [['Mass Effect', /./]]],
+ ['Dragon Age', /dragon age/, [['Dragon Age', /./]]],
+ ['The Witcher', /witcher|gwent|thronebreaker/, [['Witcher yan oyun', /gwent|thronebreaker/], ['The Witcher', /witcher/]]],
+ ['Baldur s Gate', /baldur s gate/, [['Baldur s Gate', /./]]],
+ ['Divinity', /divinity/, [['Divinity Original Sin', /original sin/]]],
+ ['Diablo', /diablo/, [['Diablo', /./]]],
+ ['Souls', /dark souls|demon s souls|elden ring|bloodborne|sekiro/, [['Dark Souls', /dark souls|demon s souls/], ['Elden Ring', /elden ring/], ['Bloodborne', /bloodborne/], ['Sekiro', /sekiro/]]],
+ ['Red Dead', /red dead|\brdr\b/, [['Red Dead Redemption', /redemption|\brdr\b/]]],
+ ['GTA', /\bgta\b|grand theft auto/, [['GTA 3D dönemi', /(gta|grand theft auto) (3|vice city|san andreas|liberty city|chinatown)/], ['GTA HD dönemi', /(gta|grand theft auto) (4|5|6)/]]],
+ ['Max Payne', /max payne/, [['Max Payne', /./]]],
+ ['Mafia', /\bmafia\b/, [['Mafia', /./]]],
+ ['Assassin s Creed', /assassin s creed|\bac\b/, [['AC RPG dönemi', /origins|odyssey|valhalla|shadows/], ['AC klasik', /./]]],
+ ['Far Cry', /far cry/, [['Far Cry', /./]]],
+ ['Prince of Persia', /prince of persia/, [['Prince of Persia', /./]]],
+ ['Uncharted', /uncharted/, [['Uncharted', /./]]],
+ ['The Last of Us', /last of us|\btlou\b/, [['The Last of Us', /./]]],
+ ['God of War', /god of war/, [['God of War İskandinav', /2018|ragnarok/], ['God of War Yunan', /./]]],
+ ['Spider-Man', /spider man/, [['Spider-Man Insomniac', /ps4|miles morales|marvel s spider man|spider man 2$|spider man$/]]],
+ ['Batman', /batman/, [['Batman Arkham', /arkham/]]],
+ ['Metal Gear', /metal gear|\bmgs\b/, [['Metal Gear Solid', /solid|\bmgs\b/], ['Metal Gear Rising', /rising/]]],
+ ['Resident Evil', /resident evil|biohazard|\bre\s?\d/, [['Resident Evil', /./]]],
+ ['Silent Hill', /silent hill/, [['Silent Hill', /./]]],
+ ['Dead Space', /dead space/, [['Dead Space', /./]]],
+ ['Street Fighter', /street fighter/, [['Street Fighter', /./]]],
+ ['Tekken', /tekken/, [['Tekken', /./]]],
+ ['Mortal Kombat', /mortal kombat/, [['Mortal Kombat', /./]]],
+ ['Smash Bros', /smash bros/, [['Smash Bros', /./]]],
+ ['Crash Bandicoot', /crash bandicoot|crash team|\bcrash\b/, [['Crash yarış', /team racing|nitro|ctr/], ['Crash Bandicoot', /./]]],
+ ['Spyro', /spyro/, [['Spyro', /./]]],
+ ['Need for Speed', /need for speed|\bnfs\b/, [['Need for Speed', /./]]],
+ ['Forza', /forza/, [['Forza Horizon', /horizon/], ['Forza Motorsport', /motorsport/]]],
+ ['Gran Turismo', /gran turismo/, [['Gran Turismo', /./]]],
+ ['FIFA / EA FC', /\bfifa\b|ea sports fc/, [['FIFA / EA FC', /./]]],
+ ['PES', /pro evolution|\bpes\b|winning eleven|efootball/, [['PES', /./]]],
+ ['Tony Hawk', /tony hawk/, [['Tony Hawk', /./]]],
+ ['Warcraft', /warcraft|hearthstone/, [['World of Warcraft', /world of warcraft/], ['Warcraft RTS', /warcraft (2|3)/], ['Hearthstone', /hearthstone/]]],
+ ['StarCraft', /starcraft/, [['StarCraft', /./]]],
+ ['Age of Empires', /age of (empires|mythology)|\baoe\b/, [['Age of Empires', /age of empires|\baoe\b/], ['Age of Mythology', /mythology/]]],
+ ['Civilization', /civilization|\bciv\b/, [['Civilization', /./]]],
+ ['Total War', /total war/, [['Total War', /./]]],
+ ['Command and Conquer', /command and conquer|red alert/, [['Red Alert', /red alert/], ['Command and Conquer', /./]]],
+ ['Heroes of Might and Magic', /heroes of might|\bhomm\b/, [['Heroes of Might and Magic', /./]]],
+ ['Mount and Blade', /mount and blade|bannerlord/, [['Mount and Blade', /./]]],
+ ['The Sims', /\bsims\b/, [['The Sims', /./]]],
+ ['SimCity', /simcity/, [['SimCity', /./]]],
+ ['Angry Birds', /angry birds/, [['Angry Birds', /./]]],
+ ['Plants vs Zombies', /plants vs zombies|\bpvz\b/, [['Plants vs Zombies', /./]]],
+ ['Clash', /clash of clans|clash royale|clash mini/, [['Clash', /./]]],
+ ['Hollow Knight', /hollow knight|silksong/, [['Hollow Knight', /./]]],
+ ['Hades', /\bhades\b/, [['Hades', /./]]],
+ ['Ori', /\bori and\b/, [['Ori', /./]]],
+ ['Metro', /\bmetro (2033|last light|exodus)\b/, [['Metro', /./]]],
+ ['Tomb Raider', /tomb raider/, [['Tomb Raider', /./]]],
+ ['Hitman', /hitman/, [['Hitman', /./]]],
+ ['Splinter Cell', /splinter cell/, [['Splinter Cell', /./]]],
+ ['Borderlands', /borderlands|tiny tina/, [['Borderlands', /borderlands/]]],
+ ['Crysis', /crysis/, [['Crysis', /./]]],
+ ['Darksiders', /darksiders/, [['Darksiders', /./]]],
+ ['Payday', /payday/, [['Payday', /./]]],
+ ['Kingdom Come', /kingdom come/, [['Kingdom Come', /./]]],
+ ['Life is Strange', /life is strange/, [['Life is Strange', /./]]],
+ ['Monster Hunter', /monster hunter/, [['Monster Hunter', /./]]],
+ ['Yakuza', /yakuza|like a dragon|judgment/, [['Yakuza', /yakuza|like a dragon/], ['Judgment', /judgment/]]],
+ ['Castlevania', /castlevania|bloodstained/, [['Castlevania', /castlevania/]]],
+ ['Mega Man', /mega ?man/, [['Mega Man', /./]]],
+ ['Bayonetta', /bayonetta/, [['Bayonetta', /./]]],
+ ['Devil May Cry', /devil may cry|\bdmc\b/, [['Devil May Cry', /./]]],
+ ['NieR', /\bnier\b/, [['NieR', /./]]],
+ ['Undertale', /undertale|deltarune/, [['Undertale', /./]]],
+ ['Five Nights at Freddy s', /five nights|\bfnaf\b/, [['Five Nights at Freddy s', /./]]],
+ ['Minecraft', /minecraft/, [['Minecraft yan oyun', /dungeons|legends/], ['Minecraft', /./]]],
+ ['Terraria', /terraria/, [['Terraria', /./]]],
+ ['Dying Light', /dying light/, [['Dying Light', /./]]],
+ ['Subnautica', /subnautica/, [['Subnautica', /./]]],
+ ['Worms', /\bworms\b/, [['Worms', /./]]],
+ ['Rayman', /rayman/, [['Rayman', /./]]],
+ ['Wolfenstein', /wolfenstein/, [['Wolfenstein', /./]]],
+ ['Quake', /\bquake\b/, [['Quake', /./]]],
+ ['Star Wars', /star wars/, [['KOTOR', /knights of old republic/], ['Star Wars Jedi', /jedi/], ['Battlefront', /battlefront/]]],
+ ['Yüzüklerin Efendisi', /lord of rings|middle earth|battle for middle/, []],
+ ['Harry Potter', /harry potter|hogwarts/, []],
+ ['Paradox', /hearts of iron|europa universalis|crusader kings|stellaris|victoria/, [['Hearts of Iron', /hearts of iron|\bhoi\b/], ['Europa Universalis', /europa universalis|\beu\d?\b/], ['Crusader Kings', /crusader kings/]]],
+ ['Bloons', /bloons|\bbtd\b/, [['Bloons TD', /./]]],
+ ['Strike Force Heroes', /strike force heroes/, [['Strike Force Heroes', /./]]],
+ ['Overcooked', /overcooked/, [['Overcooked', /./]]],
+ ['Slime Rancher', /slime rancher/, [['Slime Rancher', /./]]],
+ ['Quantic Dream', /detroit become human|heavy rain|beyond two souls|fahrenheit/, []],
+];
+const FR_STRIP = s => s.replace(/^(sid meier s|marvel s|tom clancy s|peter jackson s) /, '');
+const famKey = n => FR_STRIP(n).split(' ').filter(w => w && !/^\d+$/.test(w)).slice(0, 2).join(' ');
+const FR_CACHE = new Map();
+function classify(name){
+  if(FR_CACHE.has(name)) return FR_CACHE.get(name);
+  const n = FR_STRIP(norm(name)); let out = null;
+  for(const [f, fre, ser] of FR_RULES){
+    if(!fre.test(n)) continue;
+    const s = ser.find(([, re]) => re.test(n));
+    out = { f, s: s ? s[0] : null }; break;
+  }
+  if(!out){ const k = SERIES_OF[name] || famKey(n); out = { f: k, s: k }; }
+  FR_CACHE.set(name, out); return out;
+}
+// Tam oyun eşleşmesi: isim (ya da kısaltma / küçük yazım hatası) aynı, sayılar aynı
+const canon = s => norm(s).replace(/\bgrand theft auto\b/g, 'gta').replace(/\bcounter strike global offensive\b/g, 'csgo').replace(/ s\b/g, 's');
+const nums = s => s.split(' ').filter(w => /^\d+$/.test(w)).join(' ');
+function isExact(ans, game){
+  const a = canon(ans), g = canon(game); if(a.length < 2) return false;
+  const a0 = a.replace(/ /g, ''), g0 = g.replace(/ /g, '');
+  if(a === g || a0 === g0) return true;
+  const x = acr(game); if(x.length >= 3 && a0 === x) return true;
+  // alt başlık / ayırt edici son kısım: "skyrim", "majoras mask", "ocarina of time"
+  if(a0.length >= 6 && a !== 'total war' && (' ' + g).endsWith(' ' + a) && !KNOWN_CANON().has(a)) return true;
+  if(nums(a) !== nums(g)) return false;
+  const tol = g.length >= 14 ? 2 : g.length >= 9 ? 1 : 0;
+  return !!tol && lev(a, g) <= tol;
+}
+// Yazılan metni bilinen bir oyun ismine oturtup sınıflandır
+function classifyAns(ans){
+  const a = canon(ans), a0 = a.replace(/ /g, '');
+  for(const g of KNOWN_NAMES()) if(isExact(ans, g)) return classify(g);
+  if(a0.length >= 5) for(const g of KNOWN_NAMES()){ const c = canon(g); if((' ' + c + ' ').includes(' ' + a + ' ') && classify(g).f === classify(ans).f) return classify(g); }
+  return classify(ans);
+}
+let KNOWN_CACHE = null, KNOWN_CANON_C = null;
+const KNOWN_CANON = () => KNOWN_CANON_C || (KNOWN_CANON_C = new Set(KNOWN_NAMES().map(canon)));
+const KNOWN_NAMES = () => KNOWN_CACHE || (KNOWN_CACHE = uniq([...games, ...EXTRA_OPTS]));
+// 1 = tam oyun, 0.8 = aynı seri, 0.6 = aynı franchise, 0 = yanlış
+function answerLevel(ans, game, isText){
+  if(isExact(ans, game)) return 1;
+  const A = isText ? classifyAns(ans) : classify(ans), G = classify(game);
+  if(A.s && A.s === G.s) return 0.8;
+  if(A.f && A.f === G.f) return 0.6;
+  return 0;
+}
 const LEAD_PEN = 150; // lider yanlış yaparsa / cevap vermezse kaybettiği puan
 const speedPts = (t, span) => 500 + Math.round(500 * Math.max(0, 1 - t / span));
 $('opts').onclick = e => {
@@ -1297,11 +1459,14 @@ function onReveal(){
   for(const b of $('opts').querySelectorAll('.opt')){
     const i = +b.dataset.i; b.disabled = true;
     if(i === v.idx) b.classList.add('right');
+    else if(v.lv && v.lv[i] > 0) b.classList.add('part');
     else if(i === myAnswer) b.classList.add('wrong');
   }
   const mine = R.players[pid] && R.players[pid].last;
-  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine > 0 ? 'Doğru! +' + mine + ' puan' : mine < 0 ? 'Lider cezası: ' + mine + ' puan' : 'Yanlış'}</div>` +
-    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}${a.j ? ' (joker)' : ''}${a.fx ? ' <small>(elle düzeltildi)</small>' : ''}</span><span>${a.ok ? '+' + a.pts : '✗'}${isHost ? `<button class="fix" data-k="${k}">${a.ok ? 'Yanlış say' : 'Doğru say'}</button>` : ''}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen bir cevabı yanındaki düğmeyle düzeltebilirsin.</small>' : ''}</div>` : '') +
+  const myL = r.ansMode === 'text' ? ((v.list || []).find(x => x.id === pid) || {}).lvl : (myAnswer === v.idx ? 1 : (v.lv || [])[myAnswer]);
+  const lvTxt = myL === 0.8 ? 'Seri doğru! (%80)' : myL === 0.6 ? 'Franchise doğru! (%60)' : 'Doğru!';
+  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine > 0 ? lvTxt + ' +' + mine + ' puan' : mine < 0 ? 'Lider cezası: ' + mine + ' puan' : 'Yanlış'}</div>` +
+    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}${a.j ? ' (joker)' : ''}${a.fx ? ' <small>(elle düzeltildi)</small>' : ''}</span><span>${a.ok ? (a.lvl === 0.8 ? '(seri) ' : a.lvl === 0.6 ? '(franchise) ' : '') + '+' + a.pts : '✗'}${isHost ? `<button class="fix" data-k="${k}">${a.ok ? 'Yanlış say' : 'Doğru say'}</button>` : ''}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen bir cevabı yanındaki düğmeyle düzeltebilirsin.</small>' : ''}</div>` : '') +
     (v.vid ? `<div class="vote">Bu parça iyi bir seçim miydi? <button data-v="up" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'up' ? 'on' : ''}">👍</button><button data-v="down" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'down' ? 'on' : ''}">👎</button></div>` : '');
   $('result').classList.remove('hidden');
 }
@@ -1364,16 +1529,20 @@ async function issueRound(){
   clearInterval(H.timer); clearTimeout(H.nextT);
   const v = H.results[H.idx];
   if(!v || !v.id){ H.n--; hostNext(); return; }
-  // 12 şık: yanlış şıklar oyun listesinden ve EXTRA_OPTS'tan (sadece şık olarak kullanılan gerçek oyunlar) gelir; aynı seriden / birbirine benzeyen şıklar yan yana çıkmaz
-  const NOPT = 12, picked = [H.game], usedS = new Set([seriesKey(H.game)]);
+  // 16 şık: 1-2 tanesi aynı seriden / franchise'tan (kısmi puan), kalanlar oyun listesinden ve EXTRA_OPTS'tan; benzer şıklar yan yana çıkmaz
+  const NOPT = 16, picked = [H.game], usedS = new Set([seriesKey(H.game)]);
   const fam = g => norm(String(g).split(':')[0]).replace(/^(sid meier s|marvel s|tom clancy s) /, '').split(' ').filter(w => !/^\d+$/.test(w)).slice(0, 2).join(' ');
   const fams = new Set([fam(H.game)]);
-  const clash = g => fams.has(fam(g)) || picked.some(o => isCorrect(g, o) || isCorrect(o, g));
+  const near = { 0.8: [], 0.6: [] };
+  for(const g of uniq([...games, ...EXTRA_OPTS])){ if(g === H.game) continue; const l = answerLevel(g, H.game, false); if(l === 0.8 || l === 0.6) near[l].push(g); }
+  for(const l of [0.8, 0.6]){ const c = shuffle(near[l]).find(g => !picked.some(o => o !== H.game && (isExact(g, o) || isExact(o, g)))); if(c && Math.random() < 0.85){ picked.push(c); fams.add(fam(c)); usedS.add(seriesKey(c)); } }
+  const clash = g => fams.has(fam(g)) || picked.some(o => answerLevel(g, o, false) > 0 || answerLevel(o, g, false) > 0);
   for(const pool of [[...gamesFor(H.diff), ...EXTRA_OPTS], games]){
     for(const g of shuffle(uniq(pool).filter(g => g !== H.game))){ if(picked.length >= NOPT) break; const k = seriesKey(g); if(usedS.has(k) || clash(g)) continue; usedS.add(k); fams.add(fam(g)); picked.push(g); }
     if(picked.length >= NOPT) break;
   }
   const options = shuffle(picked);
+  H.lv = options.map(o => o === H.game ? 1 : answerLevel(o, H.game, false));
   H.correct = options.indexOf(H.game);
   const coverMode = H.mode === 'cover';
   const listen = coverMode ? 30 : H.listen;
@@ -1389,7 +1558,8 @@ async function issueRound(){
   ups['answers/' + H.n] = null;
   ups.reveal = null;
   ups.state = 'play';
-  const elim = shuffle(options.map((_, i) => i).filter(i => i !== H.correct)).slice(0, Math.max(1, options.length - 4));
+  const zero = options.map((_, i) => i).filter(i => H.lv[i] === 0);
+  const elim = shuffle(zero).slice(0, Math.max(1, zero.length - 3));
   const hint = H.game.split(' ').map(w => /^[0-9IVX]+\W*$/.test(w) ? w : [...w].map((ch, i, a) => i === 0 || !/[\p{L}\p{N}]/u.test(ch) || !/[\p{L}\p{N}]/u.test(a[i-1]) ? ch : '_').join('')).join('   ');
   ups.round = { mult:(H.total >= 5 && H.n > H.total - 2) ? 2 : 1, n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode, jok:H.jokers || 0, elim, hint };
   room.update(ups);
@@ -1408,18 +1578,18 @@ async function hostReveal(ansIn){
   const ans = ansIn || (await room.child('answers/' + H.n).get()).val() || {};
   const span = r.deadline - r.startAt;
   const ups = {}, list = [], mult = r.mult || 1;
-  const rk = ranked(), lead = rk.length > 1 && (rk[0].score || 0) >= LEAD_PEN && (rk[0].score || 0) > (rk[1].score || 0) ? rk[0].id : null;
+  const rk = ranked(), lead = rk.length > 1 && (rk[0].score || 0) - (rk[1].score || 0) > 700 ? rk[0].id : null; // ikinciyle arasında 700'den fazla fark varsa
   for(const id in R.players){
     const a = ans[id];
-    const ok = a ? (r.ansMode === 'text' ? isCorrect(a.txt, H.game) : a.i === H.correct) : false;
-    let pts = ok ? Math.round(speedPts(a.t, span) * (a.j ? 0.5 : 1) * mult) : 0;
+    const lvl = a ? (r.ansMode === 'text' ? answerLevel(a.txt, H.game, true) : (a.i === H.correct ? 1 : (H.lv || [])[a.i] || 0)) : 0, ok = lvl > 0;
+    let pts = ok ? Math.round(speedPts(a.t, span) * lvl * (a.j ? 0.5 : 1) * mult) : 0;
     if(!ok && id === lead && R.players[id].online) pts = -LEAD_PEN;
-    if(a && r.ansMode === 'text') list.push({ id, name:R.players[id].name, txt:a.txt, t:a.t, ok, pts, j:a.j ? 1 : 0 });
+    if(a && r.ansMode === 'text') list.push({ id, name:R.players[id].name, txt:a.txt, t:a.t, ok, pts, j:a.j ? 1 : 0, lvl });
     ups['players/' + id + '/score'] = (R.players[id].score || 0) + pts;
     ups['players/' + id + '/last'] = pts;
   }
   const v = H.results[H.idx] || {};
-  ups.reveal = { n:H.n, idx:H.correct, game:H.game, title:v.title || '', g:gkey(H.game), vid:v.id || '' };
+  ups.reveal = { n:H.n, idx:H.correct, game:H.game, title:v.title || '', g:gkey(H.game), vid:v.id || '', lv: r.ansMode === 'text' ? null : (H.lv || null) };
   if(list.length) ups.reveal.list = list.sort((x,y) => x.t - y.t);
   ups.state = 'reveal';
   await room.update(ups);
@@ -1431,7 +1601,7 @@ $('result').onclick = async e => {
   const k = +d.dataset.k, it = R.reveal.list[k], r = R.round; if(!it || !r) return;
   const ok = !it.ok, pts = ok ? Math.round(speedPts(it.t, r.deadline - r.startAt) * (it.j ? 0.5 : 1) * (r.mult || 1)) : 0;
   const ups = {};
-  ups['reveal/list/' + k + '/ok'] = ok; ups['reveal/list/' + k + '/pts'] = pts; ups['reveal/list/' + k + '/fx'] = 1;
+  ups['reveal/list/' + k + '/ok'] = ok; ups['reveal/list/' + k + '/pts'] = pts; ups['reveal/list/' + k + '/fx'] = 1; ups['reveal/list/' + k + '/lvl'] = ok ? 1 : 0;
   ups['players/' + it.id + '/score'] = ((R.players[it.id] || {}).score || 0) - (it.pts || 0) + pts;
   ups['players/' + it.id + '/last'] = pts;
   clearTimeout(H.nextT); H.nextT = setTimeout(hostNext, 10000);
