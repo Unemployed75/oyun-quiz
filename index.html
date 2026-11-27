@@ -207,6 +207,8 @@ const FB_CONFIG = {
 
 /* ===== YouTube API anahtarı: aşağıdaki iki tırnağın ARASINA yapıştır ===== */
 const YT_KEY = "AIzaSyBxGaS5QBhSvHK5kswA2jS_b7sg1J6hlko";
+/* ===== İkinci YouTube API anahtarı (ilkinin hakkı bitince kullanılır): iki tırnağın ARASINA yapıştır ===== */
+const YT_KEY2 = "";
 
 const DEFAULT_GAMES = `Super Mario Bros
 Super Mario 64
@@ -488,14 +490,20 @@ function dropFromCache(game, id){
 const gkey = g => g.replace(/[.#$\[\]\/]/g, '_');
 function markBad(game, id){ if(id) db.ref('tracks/' + gkey(game) + '/items/' + id + '/bad').set(true); }
 function isoDur(s){ const m = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/.exec(s || '') || []; return (+m[1]||0)*3600 + (+m[2]||0)*60 + (+m[3]||0); }
+const YT_KEYS = [YT_KEY, YT_KEY2].filter(Boolean);
+let ytKeyIdx = 0;
+// Bir anahtarın hakkı biterse otomatik olarak sıradakine geçer
 async function ytGet(path){
-  const j = await (await fetch('https://www.googleapis.com/youtube/v3/' + path + '&key=' + encodeURIComponent(YT_KEY || LS.get('vgq-key','')))).json();
-  if(j.error){
+  for(;;){
+    const key = YT_KEYS[ytKeyIdx] || LS.get('vgq-key','');
+    const j = await (await fetch('https://www.googleapis.com/youtube/v3/' + path + '&key=' + encodeURIComponent(key))).json();
+    if(!j.error) return j;
     const why = (j.error.errors && j.error.errors[0] && j.error.errors[0].reason) || '';
-    if(why === 'quotaExceeded') throw new Error('Günlük YouTube arama hakkı doldu, yarın sıfırlanır. Daha önce çalınan oyunlar yine çalışır.');
+    const quota = why === 'quotaExceeded' || why === 'rateLimitExceeded' || /quota/i.test(j.error.message || '');
+    if(quota && ytKeyIdx < YT_KEYS.length - 1){ ytKeyIdx++; continue; }
+    if(quota) throw new Error('Günlük YouTube arama hakkı doldu, saat 10:00\'da sıfırlanır. Daha önce çalınan oyunlar yine çalışır.');
     throw new Error('YouTube hatası: ' + j.error.message);
   }
-  return j;
 }
 // Önce resmi albümden, olmazsa tek tek video aramasından parça havuzu kurar
 // Deezer'dan oyunun resmi soundtrack albümünü ve en popüler parçalarını bulur (YouTube hakkı harcamaz)
