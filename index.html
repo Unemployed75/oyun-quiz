@@ -177,6 +177,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
       <div class="teams hidden" id="teamPick"></div>
       <p class="dim" id="lobbyWait">Oyunu kuran kişinin başlatması bekleniyor...</p>
       <div class="hostbar hidden" id="lobbyHost"><button class="main" id="startBtn">Oyunu başlat</button></div>
+      <details id="lobbySet" class="hidden" style="margin-top:12px;text-align:left"><summary style="cursor:pointer;font-weight:600">Oyun ayarları (başlatmadan önce değiştirebilirsin)</summary><div class="row" id="lobbySetRow"></div></details>
       <p><label class="pill vol">Müzik sesi <input type="range" class="volIn" min="0" max="100" aria-label="Müzik sesi"></label></p>
       <p><small>Telefonda sessiz modu kapat, sesi aç.</small></p>
     </div>
@@ -1049,6 +1050,7 @@ async function enterRoom(c, name, host){
   if(host) room.child('host').set(pid);
   $('lobbyCode').textContent = c;
   $('lobbyHost').classList.toggle('hidden', !host);
+  $('lobbySet').classList.toggle('hidden', !host); if(host) buildLobbySettings();
   $('lobbyWait').classList.toggle('hidden', host);
   $('hostBar').classList.toggle('hidden', !host);
   $('againBtn').classList.toggle('hidden', !host);
@@ -1304,7 +1306,23 @@ function onReveal(){
 }
 
 /* ===== oda kurucusu (oyunu yöneten) ===== */
-$('startBtn').onclick = () => { prime(); hostStart(); };
+// Lobide ayar paneli: oyun bitince odayı kuran ayarları değiştirip yeniden başlatabilir
+const SET_IDS = ['rounds','listen','startMode','mode','ansMode','diff','theme','teams','jokers'];
+function buildLobbySettings(){
+  const row = $('lobbySetRow'); if(row.childElementCount) return;
+  for(const id of SET_IDS){
+    const d = document.createElement('div'), l = document.createElement('label'), c = $(id).cloneNode(true);
+    l.textContent = document.querySelector('label[for="' + id + '"]').textContent; c.id = 'L_' + id; l.htmlFor = c.id; c.value = $(id).value;
+    d.append(l, c); row.appendChild(d);
+  }
+  $('L_teams').onchange = () => { if(room) room.update({ teams: +$('L_teams').value }); };
+}
+function readLobbySettings(){
+  if(!$('L_rounds')) return;
+  const v = id => $('L_' + id).value;
+  H.total = +v('rounds'); H.listen = +v('listen'); H.startMode = v('startMode'); H.mode = v('mode'); H.ansMode = v('ansMode'); H.diff = v('diff'); H.theme = v('theme'); H.teams = +v('teams'); H.jokers = +v('jokers');
+}
+$('startBtn').onclick = async () => { prime(); readLobbySettings(); await room.update({ teams: H.teams || 0, total: H.total }); hostStart(); };
 $('againBtn').onclick = async () => {
   const ups = {};
   for(const id in R.players){ ups['players/' + id + '/score'] = 0; ups['players/' + id + '/last'] = 0; ups['players/' + id + '/jk'] = 0; }
