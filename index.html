@@ -209,6 +209,8 @@ const FB_CONFIG = {
 const YT_KEY = "AIzaSyBxGaS5QBhSvHK5kswA2jS_b7sg1J6hlko";
 /* ===== İkinci YouTube API anahtarı (ilkinin hakkı bitince kullanılır): iki tırnağın ARASINA yapıştır ===== */
 const YT_KEY2 = "";
+/* ===== Last.fm API anahtarı (sadece "API key", Shared secret DEĞİL): iki tırnağın ARASINA yapıştır ===== */
+const LASTFM_KEY = "";
 
 const DEFAULT_GAMES = `Super Mario Bros
 Super Mario 64
@@ -543,6 +545,72 @@ async function deezerTop(game){
   return tracks.length ? { album:al.title, artist:(al.artist && al.artist.name) || '', tracks } : null;
 }
 window.__vgqDz = async list => { const o = {}; for(const g of list){ try{ const d = await deezerTop(g); o[g] = d ? [d.album + ' — ' + d.artist, ...d.tracks.slice(0, 6).map(t => t.title)] : 'BULUNAMADI'; }catch(e){ o[g] = 'HATA ' + e.message; } } return o; };
+// Last.fm: Deezer'da olmayan oyunlar için resmi soundtrack'i ve parçaların dinleyici sayısını bulur
+async function lfGet(params){
+  const r = await fetch('https://ws.audioscrobbler.com/2.0/?format=json&autocorrect=1&api_key=' + encodeURIComponent(LASTFM_KEY) + '&' + params);
+  const j = await r.json();
+  if(j.error) throw new Error('Last.fm: ' + j.message);
+  return j;
+}
+async function lastfmTop(game){
+  if(!LASTFM_KEY) return null;
+  const stop = ['of','and','a','to','in','on','for','the'];
+  const fix = x => (' ' + norm(x) + ' ').replace(/ grand theft auto /g, ' gta ').trim();
+  const sets = [game, ...game.split(':'), game.replace(/\b(19|20)\d\d\b/g, '')].map(x => fix(x).split(' ').filter(w => w && !stop.includes(w))).filter(a => a.length);
+  const gw = new Set(fix(game).split(' '));
+  const common = new Set('the original game video soundtrack sound track tracks ost music score official complete deluxe edition vol volume collectors collector from by and of a to version remastered anniversary expanded selections songs song theme themes collection special digital part disc cd 1 2 3 4 legend zelda super nintendo'.split(' '));
+  const extra = t => fix(t).split(' ').filter(w => w && !gw.has(w) && !common.has(w)).length;
+  const sequel = t => fix(t).split(' ').some(w => /^\d{1,2}$/.test(w) && !gw.has(w) && !/disc|vol|cd/i.test(t));
+  const bad = /piano|lo-?fi|epic version|\blive\b|netflix|series|season|\bfilm\b|movie|\bfan\b|unofficial|cover|tribute|remix|inspired|orchestral|orchestra|arrange|8.?bit|metal|acoustic|guitar|cello|violin|lullaby|reimagined|ringtone|karaoke|sleep|relax|study|chill|playlist|hits|greatest|best of|gamer|demo|\bmix\b|medley|jazz|synthwave|reorchestrated|remaster(ed)? by|smooth|\brap\b/i;
+  const seen = new Map();
+  for(const q of [game + ' soundtrack', game + ' original soundtrack', game]){
+    let s; try{ s = await lfGet('method=album.search&limit=30&album=' + encodeURIComponent(q)); }catch(e){ continue; }
+    const arr = (((s.results || {}).albummatches || {}).album) || [];
+    for(const x of arr){ const k = x.artist + '||' + x.name; if(!seen.has(k)) seen.set(k, x); }
+  }
+  const cands = [...seen.values()].filter(x => !bad.test(x.name) && !bad.test(x.artist))
+    .filter(x => { const h = fix(x.name).split(' '); return sets.some(set => set.every(w => h.includes(w))); })
+    .filter(x => extra(x.name) <= 2 && !sequel(x.name))
+    .slice(0, 10);
+  let best = null;
+  for(const c of cands){
+    let info; try{ info = (await lfGet('method=album.getinfo&artist=' + encodeURIComponent(c.artist) + '&album=' + encodeURIComponent(c.name))).album; }catch(e){ continue; }
+    if(!info) continue;
+    let tr = (info.tracks && info.tracks.track) || []; if(!Array.isArray(tr)) tr = [tr];
+    if(tr.length < 5) continue;
+    const sc = +(info.listeners || 0) * (/soundtrack|\bost\b|sound ?track|score/i.test(c.name) ? 1.3 : 1) * (/original/i.test(c.name) ? 1.2 : 1);
+    if(!best || sc > best.sc) best = { sc, name:info.name, artist:(info.artist && info.artist.name) || info.artist || c.artist, tr, listeners:+(info.listeners || 0) };
+  }
+  if(!best || best.listeners < 100) return null;
+  const list = best.tr.filter(t => !(+t.duration > 0 && +t.duration < 35) && !bad.test(t.name)).slice(0, 60);
+  const out = [];
+  for(let i = 0; i < list.length; i += 6){
+    const part = await Promise.all(list.slice(i, i + 6).map(async t => {
+      const ar = (t.artist && t.artist.name) || best.artist;
+      try{ const j = await lfGet('method=track.getinfo&artist=' + encodeURIComponent(ar) + '&track=' + encodeURIComponent(t.name)); return { title:t.name, rank:+((j.track || {}).listeners || 0) }; }
+      catch(e){ return { title:t.name, rank:0 }; }
+    }));
+    out.push(...part);
+  }
+  const uniq = new Set();
+  const tracks = out.sort((a,b) => b.rank - a.rank).filter(t => { const k = norm(t.title); if(uniq.has(k)) return false; uniq.add(k); return true; }).slice(0, 12);
+  return tracks.length >= 3 ? { album:best.name, artist:best.artist, src:'lastfm', listeners:best.listeners, tracks } : null;
+}
+window.__vgqLfm = async list => { const o = {}; for(const g of list){ try{ const d = await lastfmTop(g); o[g] = d ? d.album + ' — ' + d.artist + ' [' + d.listeners + '] :: ' + d.tracks.slice(0, 6).map(t => t.title + ' (' + Math.round(t.rank / 1000) + 'k)').join(' | ') : 'YOK'; }catch(e){ o[g] = 'HATA ' + e.message; } } return o; };
+// Deezer'ı olmayan oyunlar için Last.fm verisini veritabanına kaydeder
+window.__vgqLfmSave = async list => {
+  const out = {};
+  for(const g of list){
+    try{
+      const cur = (await db.ref('tracks/' + gkey(g) + '/dz').once('value')).val();
+      if(cur && cur.album && cur.src !== 'lastfm'){ out[g] = 'DEEZER VAR'; continue; }
+      const d = await lastfmTop(g);
+      await db.ref('tracks/' + gkey(g) + '/dz').set(d || { none:true, lf:true });
+      out[g] = d ? d.album + ' — ' + d.artist + ' [' + d.listeners + '] :: ' + d.tracks.slice(0, 5).map(t => t.title).join(' | ') : 'YOK';
+    }catch(e){ out[g] = 'HATA ' + e.message; }
+  }
+  return out;
+};
 // Deezer parça adı ile YouTube video başlığını eşleştirir
 function trackMatch(track, video){
   const a = norm(String(track).replace(/\(.*?\)|\[.*?\]/g, ' ')), b = ' ' + norm(video) + ' ';
@@ -553,6 +621,7 @@ async function fetchPool(game, cdz){
   let dz = null;
   if(cdz && cdz.album) dz = cdz;
   else if(!cdz){ try{ dz = await deezerTop(game); }catch(e){} }
+  if(!dz && LASTFM_KEY && !(cdz && cdz.lf)){ try{ dz = await lastfmTop(game); }catch(e){} }
   return (await fetchPoolPL(game, dz)) || (await fetchPoolSearch(game));
 }
 // Deezer verisini önceden veritabanına kaydeder (YouTube hakkı harcamaz)
@@ -601,7 +670,7 @@ async function fetchPoolPL(game, dz){
   const sets = [game, ...game.split(':')].map(x => fix(x).split(' ').filter(w => w && !stop.includes(w))).filter(a => a.length);
   const badPl = /cover|remix|piano|lo-?fi|playthrough|walkthrough|gameplay|let'?s play|full game|reaction|guitar|orchestra|8.?bit|rap|best of|top \d+|meme|songs? by|inspired/i;
   const badTr = /cover|remix|piano|reaction|lo-?fi|nightcore|slowed|sped up|8d audio|trailer|gameplay|lyric|fan ?made/i;
-  const s = await ytGet('search?part=snippet&type=playlist&maxResults=15&q=' + encodeURIComponent(dz ? dz.album : game + ' original soundtrack'));
+  const s = await ytGet('search?part=snippet&type=playlist&maxResults=15&q=' + encodeURIComponent(dz && dz.src !== 'lastfm' ? dz.album : game + ' original soundtrack'));
   const official = p => / - topic$/i.test(p.ch) || /^album/i.test(p.title);
   const gw = fix(game).split(' ');
   const sequel = p => fix(p.title).split(' ').some(w => /^\d{1,2}$/.test(w) && !gw.includes(w)) || (/\bpart\b/i.test(p.title) && !/\bpart\b/i.test(game));
