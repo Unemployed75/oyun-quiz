@@ -1098,7 +1098,7 @@ function renderPlayers(){
   $('finalBoard').innerHTML = list.map((p,i) => `<tr><td>${i+1}. ${dot(p)}${esc(p.name)}</td><td class="n">${p.score||0}</td></tr>`).join('');
 }
 function onState(){
-  if(R.state === 'lobby'){ clearTimers(); try{ yt.stopVideo(); }catch(e){} lastKey = ''; myAnswer = null; revealedN = -1; $('unlock').classList.add('hidden'); show('lobby'); }
+  if(R.state === 'lobby'){ clearTimers(); clearEffects(); jokUsedN = -1; for(const k in voted) delete voted[k]; try{ yt.stopVideo(); }catch(e){} lastKey = ''; myAnswer = null; revealedN = -1; $('unlock').classList.add('hidden'); show('lobby'); }
   else if(R.state === 'play' || R.state === 'reveal') show('game');
   else if(R.state === 'end'){
     clearTimers(); try{ yt.stopVideo(); }catch(e){}
@@ -1510,7 +1510,9 @@ function onReveal(){
   const mine = R.players[pid] && R.players[pid].last;
   const myL = r.ansMode === 'text' ? ((v.list || []).find(x => x.id === pid) || {}).lvl : (myAnswer === v.idx ? 1 : (v.lv || [])[myAnswer]);
   const lvTxt = myL === 0.8 ? 'Seri doğru! (%80)' : myL === 0.6 ? 'Franchise doğru! (%60)' : 'Doğru!';
-  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine > 0 ? lvTxt + ' +' + mine + ' puan' : mine < 0 ? 'Lider cezası: ' + mine + ' puan' : 'Yanlış'}</div>` +
+  const wA = R.wheel && R.wheel.n === v.n && R.wheel.res === 'ayna' ? R.wheel : null;
+  const resMsg = wA && pid === wA.lead && myL > 0 && !mine ? 'Doğru ama ayna turu: puanın ' + wA.whoName + ' oyuncusuna gitti' : wA && pid === wA.who && mine > 0 ? 'Ayna turu: +' + mine + ' puan' : myAnswer === null ? (mine < 0 ? 'Cevap vermedin, lider cezası: ' + mine + ' puan' : 'Cevap vermedin') : mine > 0 ? lvTxt + ' +' + mine + ' puan' : mine < 0 ? 'Lider cezası: ' + mine + ' puan' : 'Yanlış';
+  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${esc(resMsg)}</div>` +
     (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}${a.j ? ' (joker)' : ''}${a.fx ? ' <small>(elle düzeltildi)</small>' : ''}</span><span>${a.ok ? (a.lvl === 0.8 ? '(seri) ' : a.lvl === 0.6 ? '(franchise) ' : '') + '+' + a.pts : '✗'}${isHost ? `<button class="fix" data-k="${k}">${a.ok ? 'Yanlış say' : 'Doğru say'}</button>` : ''}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen bir cevabı yanındaki düğmeyle düzeltebilirsin.</small>' : ''}</div>` : '') +
     (v.vid ? `<div class="vote">Bu parça iyi bir seçim miydi? <button data-v="up" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'up' ? 'on' : ''}">👍</button><button data-v="down" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'down' ? 'on' : ''}">👎</button></div>` : '');
   $('result').classList.remove('hidden');
@@ -1543,7 +1545,7 @@ $('againBtn').onclick = async () => {
 };
 $('leaveBtn').onclick = () => location.reload();
 function hostStart(){
-  H.pool = shuffle(gamesFor(H.diff)); H.n = 0;
+  H.pool = shuffle(gamesFor(H.diff)); H.n = 0; H.wheelN = 0;
   const ups = { state:'play', total:H.total }, tn = R.teams || 0;
   if(tn){ // takımı olmayanları en az kişili takıma koy
     const cnt = Array(tn).fill(0), ids = Object.keys(R.players);
@@ -1558,7 +1560,7 @@ async function hostNext(){
   if(H.n >= H.total){ room.update({ state:'end' }); return; }
   if(!H.pool.length) H.pool = shuffle(gamesFor(H.diff));
   H.n++; H.game = H.pool.pop();
-  if(H.n === Math.floor(H.total / 2) + 1 && H.total >= 4){ // yarıda: puan tablosunun alt yarısına +1 joker
+  if(H.n === Math.floor(H.total / 2) + 1 && H.total >= 4 && H.wheelN !== H.n){ H.wheelN = H.n; // yarıda: puan tablosunun alt yarısına +1 joker
     const l = ranked().filter(p => p.online);
     if(l.length >= 2){ const u = {}; l.slice(Math.ceil(l.length / 2)).forEach(p => u['players/' + p.id + '/jb'] = (p.jb || 0) + 1);
       const who = l[l.length - 1], lead = l[0], res = WHEEL[Math.floor(Math.random() * WHEEL.length)][0];
