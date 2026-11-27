@@ -524,8 +524,12 @@ async function deezerTop(game){
     .filter(x => { const h = fix(x.title).split(' '); return sets.some(set => set.every(w => h.includes(w))); })
     .map(x => ({ x, e:extra(x.title), sc:(/soundtrack|\bost\b|score/i.test(x.title) ? 2 : 0) + (/original/i.test(x.title) ? 1 : 0) - 2.5 * extra(x.title) - (sequel(x.title) ? 3 : 0) + Math.min(1, (x.nb_tracks || 0) / 30) }))
     .sort((p,q) => q.sc - p.sc);
-  const best = cands[0]; if(!best || best.e > 2) return null;
-  const al = best.x;
+  let al = null;
+  for(const c of cands.filter(c => c.e <= 2).slice(0, 4)){
+    const info = await dzGet('album/' + c.x.id);
+    if((info.fans || 0) >= 100){ al = c.x; break; }
+  }
+  if(!al) return null;
   const t = await dzGet('album/' + al.id + '/tracks?limit=200');
   const tracks = (t.data || []).sort((x,y) => (y.rank || 0) - (x.rank || 0)).slice(0, 12).map(x => ({ title:x.title, rank:x.rank || 0 }));
   return tracks.length ? { album:al.title, artist:(al.artist && al.artist.name) || '', tracks } : null;
