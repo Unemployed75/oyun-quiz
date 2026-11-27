@@ -498,7 +498,50 @@ async function ytGet(path){
   return j;
 }
 // Önce resmi albümden, olmazsa tek tek video aramasından parça havuzu kurar
-async function fetchPool(game){ return (await fetchPoolPL(game)) || (await fetchPoolSearch(game)); }
+// Deezer'dan oyunun resmi soundtrack albümünü ve en popüler parçalarını bulur (YouTube hakkı harcamaz)
+function dzGet(path){
+  return new Promise((res, rej) => {
+    const cb = 'dz' + Math.random().toString(36).slice(2), s = document.createElement('script');
+    const done = () => { clearTimeout(t); delete window[cb]; s.remove(); };
+    const t = setTimeout(() => { done(); rej(new Error('Deezer zaman aşımı')); }, 8000);
+    window[cb] = d => { done(); res(d); };
+    s.onerror = () => { done(); rej(new Error('Deezer yüklenemedi')); };
+    s.src = 'https://api.deezer.com/' + path + (path.includes('?') ? '&' : '?') + 'output=jsonp&callback=' + cb;
+    document.head.appendChild(s);
+  });
+}
+async function deezerTop(game){
+  const stop = ['of','and','a','to','in','on','for'];
+  const fix = x => (' ' + norm(x) + ' ').replace(/ grand theft auto /g, ' gta ').trim();
+  const sets = [game, ...game.split(':'), game.replace(/\b(19|20)\d\d\b/g, '')].map(x => fix(x).split(' ').filter(w => w && !stop.includes(w))).filter(a => a.length);
+  const gw = new Set(fix(game).split(' '));
+  const common = new Set('original game video soundtrack ost music score official complete deluxe edition vol volume collectors collector from by and of a to version remastered anniversary expanded selections songs song theme themes collection special digital part disc 1 2 3 4'.split(' '));
+  const extra = t => fix(t).split(' ').filter(w => w && !gw.has(w) && !common.has(w)).length;
+  const sequel = t => fix(t).split(' ').some(w => /^\d{1,2}$/.test(w) && !gw.has(w) && !/disc|vol/i.test(t));
+  const bad = /piano|lo-?fi|epic version|\blive\b|netflix|series|season|\bfilm\b|movie|\bfan\b|unofficial|ttrpg|cover|tribute|remix|from "|inspired|orchestral|arrange|8.?bit|metal|acoustic|guitar|cello|violin|lullaby|reimagined|ringtone|karaoke|instrumental version|sleep|relax|study|chill|playlist|hits|greatest|best of|gamer|demo|\bmix\b|medley|jazz|rock version|synthwave|\bmap\b|\bmod\b/i;
+  const a = await dzGet('search/album?q=' + encodeURIComponent(game + ' soundtrack') + '&limit=25');
+  const cands = (a.data || []).filter(x => !bad.test(x.title) && (x.nb_tracks || 0) >= 5)
+    .filter(x => { const h = fix(x.title).split(' '); return sets.some(set => set.every(w => h.includes(w))); })
+    .map(x => ({ x, e:extra(x.title), sc:(/soundtrack|\bost\b|score/i.test(x.title) ? 2 : 0) + (/original/i.test(x.title) ? 1 : 0) - 2.5 * extra(x.title) - (sequel(x.title) ? 3 : 0) + Math.min(1, (x.nb_tracks || 0) / 30) }))
+    .sort((p,q) => q.sc - p.sc);
+  const best = cands[0]; if(!best || best.e > 2) return null;
+  const al = best.x;
+  const t = await dzGet('album/' + al.id + '/tracks?limit=200');
+  const tracks = (t.data || []).sort((x,y) => (y.rank || 0) - (x.rank || 0)).slice(0, 12).map(x => ({ title:x.title, rank:x.rank || 0 }));
+  return tracks.length ? { album:al.title, artist:(al.artist && al.artist.name) || '', tracks } : null;
+}
+window.__vgqDz = async list => { const o = {}; for(const g of list){ try{ const d = await deezerTop(g); o[g] = d ? [d.album + ' — ' + d.artist, ...d.tracks.slice(0, 6).map(t => t.title)] : 'BULUNAMADI'; }catch(e){ o[g] = 'HATA ' + e.message; } } return o; };
+// Deezer parça adı ile YouTube video başlığını eşleştirir
+function trackMatch(track, video){
+  const a = norm(String(track).replace(/\(.*?\)|\[.*?\]/g, ' ')), b = ' ' + norm(video) + ' ';
+  if(a.length < 3) return false;
+  return b.includes(' ' + a + ' ') || lev(a, norm(video)) <= 2;
+}
+async function fetchPool(game){
+  let dz = null;
+  try{ dz = await deezerTop(game); }catch(e){}
+  return (await fetchPoolPL(game, dz)) || (await fetchPoolSearch(game));
+}
 // Bir oyunun OST parçalarını video aramasıyla bulur: önce alaka, sonra izlenmeye göre sıralar
 async function fetchPoolSearch(game){
   const bad = /cover|remix|piano|reaction|guitar|lo-?fi|8.?bit|tutorial|speedrun|gameplay|walkthrough|trailer|review|nightcore|slowed|sped up|ranking|top \d+|meme|tier list|acapella|violin|medley|mashup|parody|extended|hour|\brap\b|lyric|animation|official music video|official video|fan song|movie|pel[ií]cula|evolution|sounds with|beta mix|siivagunner|orchestra|live|concert|vs\.?\b|instruments|\bwhy\b|nostalgic|music disc|new music|motion picture|\bmv\b|visualizer|ringtone|marimba|marble|harder|epic version|smash bros|ranked|entire soundtrack|but it|reacts?\b|asmr|8d audio|music video|lava chicken/i;
@@ -527,13 +570,13 @@ async function fetchPoolSearch(game){
   return Object.keys(items).length ? { items, fetched: firebase.database.ServerValue.TIMESTAMP } : null;
 }
 // Resmi soundtrack albümünü (çalma listesi) bulup en çok dinlenen parçaları alır
-async function fetchPoolPL(game){
+async function fetchPoolPL(game, dz){
   const stop = ['of','and','a','to','in','on','for'];
   const fix = x => (' ' + norm(x) + ' ').replace(/ grand theft auto /g, ' gta ').trim();
   const sets = [game, ...game.split(':')].map(x => fix(x).split(' ').filter(w => w && !stop.includes(w))).filter(a => a.length);
   const badPl = /cover|remix|piano|lo-?fi|playthrough|walkthrough|gameplay|let'?s play|full game|reaction|guitar|orchestra|8.?bit|rap|best of|top \d+|meme|songs? by|inspired/i;
   const badTr = /cover|remix|piano|reaction|lo-?fi|nightcore|slowed|sped up|8d audio|trailer|gameplay|lyric|fan ?made/i;
-  const s = await ytGet('search?part=snippet&type=playlist&maxResults=15&q=' + encodeURIComponent(game + ' original soundtrack'));
+  const s = await ytGet('search?part=snippet&type=playlist&maxResults=15&q=' + encodeURIComponent(dz ? dz.album : game + ' original soundtrack'));
   const official = p => / - topic$/i.test(p.ch) || /^album/i.test(p.title);
   const gw = fix(game).split(' ');
   const sequel = p => fix(p.title).split(' ').some(w => /^\d{1,2}$/.test(w) && !gw.includes(w)) || (/\bpart\b/i.test(p.title) && !/\bpart\b/i.test(game));
@@ -552,8 +595,14 @@ async function fetchPoolPL(game){
       .sort((a,b) => b.views - a.views);
     if(list.length < 3) continue;
     const items = {};
-    for(const t of list.slice(0, 6)) items[t.id] = { ...t, up:0, down:0 };
-    return { items, fetched: firebase.database.ServerValue.TIMESTAMP };
+    let pick = list.slice(0, 6), how = 'YouTube izlenme';
+    if(dz){
+      const m = [];
+      for(const tr of dz.tracks){ const v = list.find(x => !m.includes(x) && trackMatch(tr.title, x.title)); if(v) m.push(v); if(m.length >= 6) break; }
+      if(m.length >= 3){ pick = m; how = 'Deezer popülerlik'; }
+    }
+    pick.forEach((t, i) => { items[t.id] = { ...t, pri:i, up:0, down:0 }; });
+    return { items, src:pl.title + ' (' + how + ')', fetched: firebase.database.ServerValue.TIMESTAMP };
   }
   return null;
 }
@@ -588,7 +637,7 @@ window.__vgqTest2 = async list => {
 window.__vgqTest = async list => {
   const out = {};
   for(const g of list){
-    try{ const f = await fetchPool(g); out[g] = f ? Object.values(f.items).map(t => t.title + '  [' + t.ch + ', ' + Math.round(t.views / 1000) + 'k]') : 'BULUNAMADI'; }
+    try{ const f = await fetchPool(g); out[g] = f ? [f.src || 'tek tek arama', ...Object.values(f.items).sort((a,b) => (a.pri ?? 99) - (b.pri ?? 99)).map(t => t.title + '  [' + t.ch + ', ' + Math.round(t.views / 1000) + 'k]')] : 'BULUNAMADI'; }
     catch(e){ out[g] = 'HATA: ' + e.message; }
   }
   return out;
@@ -610,7 +659,7 @@ async function getPool(game){
 function orderPool(pool){
   if(!pool.length) return [];
   const n = H.diff === 'easy' ? 2 : H.diff === 'hard' ? 6 : 4;
-  const score = t => Math.log10((t.views || 0) + 10) + 0.6 * ((t.up || 0) - (t.down || 0));
+  const score = t => (t.pri != null ? 20 - t.pri : Math.log10((t.views || 0) + 10)) + 0.6 * ((t.up || 0) - (t.down || 0));
   const top = pool.slice().sort((a,b) => score(b) - score(a));
   let cand = top.slice(0, n).filter(t => !H.recent.includes(t.id));
   if(!cand.length) cand = top.slice(0, n);
