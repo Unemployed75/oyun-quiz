@@ -1201,9 +1201,9 @@ function sendText(){
 // Joker: şıklı modda yanlış şıkların çoğunu (12 şıkta 8'ini) eler, şıksız modda harf ipucu verir; o turun puanı yarıya iner
 let jokUsedN = -1;
 // Lanet çarkı: oyunun yarısında sondaki oyuncu için döner. Dans eden şıklar: çift puanlı turlarda liderin şıkları yer değiştirir
-const WHEEL = [['sincap','Sincap modu','#e8505b'],['dans','Dans eden şıklar','#3b82d6'],['casus','Casus','#7b61ff'],['ayna','Ayna turu','#1fa376'],['puan','+300 puan','#d98f12'],['joker','+2 joker','#c94bb5']];
+const WHEEL = [['sincap','Sincap modu','#e8505b'],['dans','Dans eden şıklar','#3b82d6'],['casus','Casus','#7b61ff'],['ayna','Ayna turu','#1fa376'],['puan','+1000 puan','#d98f12'],['joker','+2 joker','#c94bb5']];
 let wheelSeenT = 0, danceT = null, spyRef = null;
-function wheelText(w){ const L = w.leadName, W = w.whoName; return { sincap:'Lider ' + L + ' bu tur şarkıyı sincap sesiyle (1.5x hızlı) duyacak!', dans:'Lider ' + L + ' için bu tur şıklar dans edecek!', casus:W + ' bu tur liderin (' + L + ') cevabını canlı görecek!', ayna:'Ayna turu: bu tur ' + L + ' ne kazanırsa ' + W + ' alacak!', puan:W + ' +300 puan kazandı!', joker:W + ' +2 joker kazandı!' }[w.res] || ''; }
+function wheelText(w){ const L = w.leadName, W = w.whoName; return { sincap:'Lider ' + L + ' bu tur şarkıyı sincap sesiyle (1.5x hızlı) duyacak!', dans:'Lider ' + L + ' için bu tur şıklar dans edecek!', casus:W + ' bu tur liderin (' + L + ') cevabını canlı görecek!', ayna:'Ayna turu: bu tur ' + L + ' ne kazanırsa ' + W + ' alacak!', puan:W + ' +1000 puan kazandı!', joker:W + ' +2 joker kazandı!' }[w.res] || ''; }
 function showWheel(w){
   if(!w || w.t === wheelSeenT || now() - w.t > 12000) return; wheelSeenT = w.t;
   const el = $('wheel'), k = Math.max(0, WHEEL.findIndex(x => x[0] === w.res));
@@ -1563,7 +1563,7 @@ async function hostNext(){
     if(l.length >= 2){ const u = {}; l.slice(Math.ceil(l.length / 2)).forEach(p => u['players/' + p.id + '/jb'] = (p.jb || 0) + 1);
       const who = l[l.length - 1], lead = l[0], res = WHEEL[Math.floor(Math.random() * WHEEL.length)][0];
       u.wheel = { n:H.n, who:who.id, whoName:who.name, lead:lead.id, leadName:lead.name, res, t:now() };
-      if(res === 'puan') u['players/' + who.id + '/score'] = (who.score || 0) + 300;
+      if(res === 'puan') u['players/' + who.id + '/score'] = (who.score || 0) + 1000;
       if(res === 'joker') u['players/' + who.id + '/jb'] = (u['players/' + who.id + '/jb'] || who.jb || 0) + 2;
       room.update(u); H.wheelDelay = 8500; }
   }
