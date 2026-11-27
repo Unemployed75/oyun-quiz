@@ -71,6 +71,14 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .opt.right{border-color:var(--ok);background:#0f3a2c}
 .opt.wrong{border-color:var(--bad);background:#3a1620}
 .opt.part{border-color:#e0b020;background:#3a3010}
+.wheelov{position:fixed;inset:0;z-index:50;background:#000d;display:flex;align-items:center;justify-content:center}
+.wheelbox{text-align:center;padding:16px;max-width:92vw}
+.wtitle{font:800 clamp(20px,4vw,30px) Rubik,sans-serif;color:var(--acc);margin-bottom:16px}
+.wheelwrap{position:relative;width:min(80vw,380px);aspect-ratio:1;margin:0 auto}
+.wheel{width:100%;height:100%;border-radius:50%;border:6px solid #ffffff40;transition:transform 4.2s cubic-bezier(.12,.7,.15,1);position:relative;box-shadow:0 10px 40px #0008}
+.wheel span{position:absolute;left:50%;top:50%;transform-origin:0 0;font:700 clamp(12px,2.6vw,15px) Rubik,sans-serif;color:#fff;text-shadow:0 1px 3px #000;white-space:nowrap}
+.wpointer{position:absolute;top:-16px;left:50%;transform:translateX(-50%);border:15px solid transparent;border-top:26px solid var(--acc);z-index:2}
+.wdesc{margin-top:18px;font:700 clamp(17px,3vw,24px) Rubik,sans-serif;min-height:1.6em;color:#fff}
 .result{text-align:center;margin-top:14px;font-size:18px;font-weight:700}
 .result .name{font-size:clamp(24px,5vw,38px);font-weight:800;color:var(--acc);line-height:1.15}
 .hostbar{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
@@ -206,6 +214,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
       <div class="opts" id="opts"></div>
       <div class="row hidden" id="textBox" style="margin-top:14px"><div style="position:relative"><input id="textIn" placeholder="Oyunun adını yaz" autocomplete="off" maxlength="60"><div id="sugg" class="sugg hidden"></div></div><button class="main" id="textBtn" style="flex:0 0 auto">Gönder</button></div>
       <div class="hint hidden" id="hintBox"></div>
+      <div class="hint hidden" id="spyBox" style="font-size:18px;letter-spacing:0"></div>
       <button class="jbtn hidden" id="jokerBtn">Joker</button>
       <div class="result hidden" id="result"></div>
       <div class="hostbar hidden" id="hostBar">
@@ -231,6 +240,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
       <div class="hostbar"><button class="main hidden" id="againBtn">Aynı odada yeniden oyna</button><button id="leaveBtn">Ana sayfaya dön</button></div>
     </div>
   </section>
+  <div id="wheelOv" class="wheelov hidden"><div class="wheelbox"><div class="wtitle" id="wTitle"></div><div class="wheelwrap"><div class="wpointer"></div><div class="wheel" id="wheel"></div></div><div class="wdesc" id="wDesc"></div></div></div>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -1056,6 +1066,7 @@ async function enterRoom(c, name, host){
   $('hostBar').classList.toggle('hidden', !host);
   $('againBtn').classList.toggle('hidden', !host);
   room.child('players').on('value', s => { R.players = s.val() || {}; renderPlayers(); if(R.reveal) onReveal(); });
+  room.child('wheel').on('value', s => { R.wheel = s.val(); showWheel(R.wheel); });
   room.child('teams').on('value', s => { R.teams = s.val() || 0; renderPlayers(); });
   room.child('state').on('value', s => { R.state = s.val(); onState(); });
   room.child('round').on('value', s => { R.round = s.val(); onRound(); });
@@ -1137,7 +1148,7 @@ function onRound(){
   $('cover').classList.remove('withimg'); $('coverCv').classList.toggle('hidden', !useImg); $('coverCv').style.opacity = '0';
   if(useImg){ lastPx = ''; img.src = r.cover; }
   renderOptions();
-  $('hintBox').classList.add('hidden'); updJoker();
+  $('hintBox').classList.add('hidden'); updJoker(); clearEffects();
   const txtMode = r.ansMode === 'text';
   $('opts').classList.toggle('hidden', txtMode); $('textBox').classList.toggle('hidden', !txtMode);
   hideSugg(); $('textIn').value = ''; $('textIn').disabled = true; $('textBtn').disabled = true;
@@ -1165,6 +1176,7 @@ function startListening(r){
   try{ yt.seekTo(r.start, true); yt.playVideo(); }catch(e){}
   setStatus('Dinle ve seç!', true);
   enableOptions(true);
+  applyEffects(r);
   playWatch = setTimeout(() => { if(!unlocked || yt.getPlayerState() !== YT.PlayerState.PLAYING) $('unlock').classList.remove('hidden'); }, 2500);
   stopT = setTimeout(() => { if(!R.reveal || R.reveal.n !== r.n){ try{ yt.pauseVideo(); }catch(e){} setStatus(myAnswer === null ? 'Süre daralıyor, seç!' : 'Cevabın alındı'); } }, r.listen*1000);
 }
@@ -1188,6 +1200,39 @@ function sendText(){
 }
 // Joker: şıklı modda yanlış şıkların çoğunu (12 şıkta 8'ini) eler, şıksız modda harf ipucu verir; o turun puanı yarıya iner
 let jokUsedN = -1;
+// Lanet çarkı: oyunun yarısında sondaki oyuncu için döner. Dans eden şıklar: çift puanlı turlarda liderin şıkları yer değiştirir
+const WHEEL = [['sincap','Sincap modu','#e8505b'],['dans','Dans eden şıklar','#3b82d6'],['casus','Casus','#7b61ff'],['ayna','Ayna turu','#1fa376'],['puan','+300 puan','#d98f12'],['joker','+2 joker','#c94bb5']];
+let wheelSeenT = 0, danceT = null, spyRef = null;
+function wheelText(w){ const L = w.leadName, W = w.whoName; return { sincap:'Lider ' + L + ' bu tur şarkıyı sincap sesiyle (1.5x hızlı) duyacak!', dans:'Lider ' + L + ' için bu tur şıklar dans edecek!', casus:W + ' bu tur liderin (' + L + ') cevabını canlı görecek!', ayna:'Ayna turu: bu tur ' + L + ' ne kazanırsa ' + W + ' alacak!', puan:W + ' +300 puan kazandı!', joker:W + ' +2 joker kazandı!' }[w.res] || ''; }
+function showWheel(w){
+  if(!w || w.t === wheelSeenT || now() - w.t > 12000) return; wheelSeenT = w.t;
+  const el = $('wheel'), k = Math.max(0, WHEEL.findIndex(x => x[0] === w.res));
+  el.style.transition = 'none'; el.style.transform = 'rotate(0deg)';
+  el.style.background = 'conic-gradient(' + WHEEL.map((x, i) => x[2] + ' ' + (i * 60) + 'deg ' + ((i + 1) * 60) + 'deg').join(',') + ')';
+  el.innerHTML = WHEEL.map((x, i) => '<span style="transform:rotate(' + (i * 60 + 30 - 90) + 'deg) translate(min(8vw,40px),-50%)">' + x[1] + '</span>').join('');
+  $('wTitle').textContent = 'Lanet çarkı ' + w.whoName + ' için dönüyor!'; $('wDesc').textContent = '';
+  $('wheelOv').classList.remove('hidden');
+  requestAnimationFrame(() => requestAnimationFrame(() => { el.style.transition = ''; el.style.transform = 'rotate(' + (360 * 6 - (k * 60 + 30)) + 'deg)'; }));
+  setTimeout(() => { $('wDesc').textContent = wheelText(w); }, 4300);
+  setTimeout(() => $('wheelOv').classList.add('hidden'), 8200);
+}
+function clearEffects(keepSpy){
+  clearInterval(danceT); danceT = null;
+  for(const b of $('opts').children) b.style.order = '';
+  try{ yt.setPlaybackRate(1); }catch(e){}
+  if(!keepSpy){ if(spyRef){ spyRef.off(); spyRef = null; } $('spyBox').classList.add('hidden'); }
+}
+function applyEffects(r){
+  const w = R.wheel && R.wheel.n === r.n ? R.wheel : null;
+  if(w && w.res === 'sincap' && w.lead === pid){ try{ yt.setPlaybackRate(1.5); }catch(e){} setStatus('Sincap modu!', true); }
+  const dance = (w && w.res === 'dans' && w.lead === pid) || (r.mult > 1 && r.lead === pid);
+  if(dance && r.ansMode !== 'text'){ setStatus('Lider sensin, şıkların dans ediyor!', true); danceT = setInterval(() => { const bs = [...$('opts').children], ord = shuffle(bs.map((_, i) => i)); bs.forEach((b, i) => b.style.order = ord[i]); }, 900); }
+  if(w && w.res === 'casus' && w.who === pid && !spyRef){
+    $('spyBox').textContent = 'Casus: liderin cevabı bekleniyor...'; $('spyBox').classList.remove('hidden');
+    spyRef = room.child('answers/' + r.n + '/' + w.lead);
+    spyRef.on('value', s => { const a = s.val(); if(a) $('spyBox').textContent = 'Casus: ' + w.leadName + (a.txt != null ? ' "' + a.txt + '" yazdı' : ' "' + r.options[a.i] + '" şıkkını seçti'); });
+  }
+}
 function updJoker(){
   const b = $('jokerBtn'), r = R.round, me = (R.players || {})[pid] || {}, tot = r ? (r.jok || 0) + (me.jb || 0) : 0;
   b.classList.toggle('hidden', !tot || R.state === 'lobby' || R.state === 'end');
@@ -1452,7 +1497,7 @@ function onReveal(){
   const v = R.reveal, r = R.round;
   renderPlayers();
   if(!v || !r || v.n !== r.n || R.state === 'lobby' || R.state === 'end') return;
-  clearTimers(); $('unlock').classList.add('hidden'); updJoker();
+  clearTimers(); $('unlock').classList.add('hidden'); updJoker(); clearEffects(true);
   $('cover').classList.add('off');
   if(revealedN !== v.n){ revealedN = v.n; try{ yt.playVideo(); }catch(e){} }
   $('timeLbl').textContent = 'Cevap';
@@ -1492,7 +1537,7 @@ $('startBtn').onclick = async () => { prime(); readLobbySettings(); await room.u
 $('againBtn').onclick = async () => {
   const ups = {};
   for(const id in R.players){ ups['players/' + id + '/score'] = 0; ups['players/' + id + '/last'] = 0; ups['players/' + id + '/jk'] = 0; ups['players/' + id + '/jb'] = 0; }
-  ups.answers = null; ups.round = null; ups.reveal = null; ups.state = 'lobby';
+  ups.answers = null; ups.round = null; ups.reveal = null; ups.wheel = null; ups.state = 'lobby';
   lastKey = '';
   await room.update(ups);
 };
@@ -1515,7 +1560,12 @@ async function hostNext(){
   H.n++; H.game = H.pool.pop();
   if(H.n === Math.floor(H.total / 2) + 1 && H.total >= 4){ // yarıda: puan tablosunun alt yarısına +1 joker
     const l = ranked().filter(p => p.online);
-    if(l.length >= 2){ const u = {}; l.slice(Math.ceil(l.length / 2)).forEach(p => u['players/' + p.id + '/jb'] = (p.jb || 0) + 1); room.update(u); }
+    if(l.length >= 2){ const u = {}; l.slice(Math.ceil(l.length / 2)).forEach(p => u['players/' + p.id + '/jb'] = (p.jb || 0) + 1);
+      const who = l[l.length - 1], lead = l[0], res = WHEEL[Math.floor(Math.random() * WHEEL.length)][0];
+      u.wheel = { n:H.n, who:who.id, whoName:who.name, lead:lead.id, leadName:lead.name, res, t:now() };
+      if(res === 'puan') u['players/' + who.id + '/score'] = (who.score || 0) + 300;
+      if(res === 'joker') u['players/' + who.id + '/jb'] = (u['players/' + who.id + '/jb'] || who.jb || 0) + 2;
+      room.update(u); H.wheelDelay = 8500; }
   }
   setStatus('Şarkı aranıyor...', true);
   try{
@@ -1552,7 +1602,7 @@ async function issueRound(){
   H.recent.push(v.id); if(H.recent.length > 60) H.recent.shift();
   const cover = coverMode ? await fetchCover(H.game, v.id) : '';
   if(H.results[H.idx] !== v) return;
-  const startAt = now() + 3500;
+  const startAt = now() + 3500 + (H.wheelDelay || 0); H.wheelDelay = 0;
   const deadline = startAt + (coverMode ? 30 : H.listen + 10) * 1000;
   const ups = {};
   ups['answers/' + H.n] = null;
@@ -1561,7 +1611,8 @@ async function issueRound(){
   const zero = options.map((_, i) => i).filter(i => H.lv[i] === 0);
   const elim = shuffle(zero).slice(0, Math.max(1, zero.length - 3));
   const hint = H.game.split(' ').map(w => /^[0-9IVX]+\W*$/.test(w) ? w : [...w].map((ch, i, a) => i === 0 || !/[\p{L}\p{N}]/u.test(ch) || !/[\p{L}\p{N}]/u.test(a[i-1]) ? ch : '_').join('')).join('   ');
-  ups.round = { mult:(H.total >= 5 && H.n > H.total - 2) ? 2 : 1, n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode, jok:H.jokers || 0, elim, hint };
+  const rkL = ranked();
+  ups.round = { lead: rkL.length > 1 && (rkL[0].score || 0) > (rkL[1].score || 0) ? rkL[0].id : '', mult:(H.total >= 5 && H.n > H.total - 2) ? 2 : 1, n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode, jok:H.jokers || 0, elim, hint };
   room.update(ups);
   H.timer = setInterval(hostCheck, 500);
 }
@@ -1579,15 +1630,18 @@ async function hostReveal(ansIn){
   const span = r.deadline - r.startAt;
   const ups = {}, list = [], mult = r.mult || 1;
   const rk = ranked(), lead = rk.length > 1 && (rk[0].score || 0) - (rk[1].score || 0) > 700 ? rk[0].id : null; // ikinciyle arasında 700'den fazla fark varsa
+  const wA = R.wheel && R.wheel.n === H.n && R.wheel.res === 'ayna' && R.players[R.wheel.who] ? R.wheel : null; let mirror = 0;
   for(const id in R.players){
     const a = ans[id];
     const lvl = a ? (r.ansMode === 'text' ? answerLevel(a.txt, H.game, true) : (a.i === H.correct ? 1 : (H.lv || [])[a.i] || 0)) : 0, ok = lvl > 0;
     let pts = ok ? Math.round(speedPts(a.t, span) * lvl * (a.j ? 0.5 : 1) * mult) : 0;
     if(!ok && id === lead && R.players[id].online) pts = -LEAD_PEN;
+    if(wA && id === wA.lead && pts > 0){ mirror = pts; pts = 0; }
     if(a && r.ansMode === 'text') list.push({ id, name:R.players[id].name, txt:a.txt, t:a.t, ok, pts, j:a.j ? 1 : 0, lvl });
     ups['players/' + id + '/score'] = (R.players[id].score || 0) + pts;
     ups['players/' + id + '/last'] = pts;
   }
+  if(mirror){ const k = 'players/' + wA.who; ups[k + '/score'] = (ups[k + '/score'] ?? (R.players[wA.who].score || 0)) + mirror; ups[k + '/last'] = (ups[k + '/last'] || 0) + mirror; }
   const v = H.results[H.idx] || {};
   ups.reveal = { n:H.n, idx:H.correct, game:H.game, title:v.title || '', g:gkey(H.game), vid:v.id || '', lv: r.ansMode === 'text' ? null : (H.lv || null) };
   if(list.length) ups.reveal.list = list.sort((x,y) => x.t - y.t);
