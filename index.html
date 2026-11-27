@@ -1045,7 +1045,7 @@ async function enterRoom(c, name, host){
   code = c; isHost = host; room = db.ref('rooms/' + c);
   const me = room.child('players/' + pid);
   const old = (await me.get()).val();
-  await me.set({ name, score: old ? old.score || 0 : 0, online:true, team: old ? old.team || 0 : 0, jk: old ? old.jk || 0 : 0 });
+  await me.set({ name, score: old ? old.score || 0 : 0, online:true, team: old ? old.team || 0 : 0, jk: old ? old.jk || 0 : 0, jb: old ? old.jb || 0 : 0 });
   me.child('online').onDisconnect().set(false);
   if(host) room.child('host').set(pid);
   $('lobbyCode').textContent = c;
@@ -1082,7 +1082,7 @@ function renderPlayers(){
   }
   updJoker();
   $('lobbyPlayers').innerHTML = list.map(p => `<span class="${p.online ? '' : 'off'}">${dot(p)}${esc(p.name)}</span>`).join('');
-  $('board').innerHTML = list.map(p => `<tr class="${p.id === pid ? 'me' : ''}"><td>${dot(p)}${esc(p.name)}${p.online ? '' : ' <small>(çıktı)</small>'}</td><td class="d">${R.reveal && p.last ? '+' + p.last : ''}</td><td class="n">${p.score||0}</td></tr>`).join('');
+  $('board').innerHTML = list.map(p => `<tr class="${p.id === pid ? 'me' : ''}"><td>${dot(p)}${esc(p.name)}${p.online ? '' : ' <small>(çıktı)</small>'}</td><td class="d">${R.reveal && p.last ? (p.last > 0 ? '+' : '') + p.last : ''}</td><td class="n">${p.score||0}</td></tr>`).join('');
   $('finalBoard').innerHTML = list.map((p,i) => `<tr><td>${i+1}. ${dot(p)}${esc(p.name)}</td><td class="n">${p.score||0}</td></tr>`).join('');
 }
 function onState(){
@@ -1128,7 +1128,7 @@ function onRound(){
   const key = r.n + ':' + r.videoId;
   if(key === lastKey) return;
   lastKey = key; myAnswer = null; clearTimers();
-  $('roundLbl').textContent = `Tur ${r.n}/${r.total}`;
+  $('roundLbl').textContent = `Tur ${r.n}/${r.total}` + (r.mult > 1 ? ' · ' + r.mult + 'x puan' : '');
   $('result').classList.add('hidden');
   $('cover').classList.remove('off');
   $('barFill').style.width = '0';
@@ -1188,7 +1188,7 @@ function sendText(){
 // Joker: şıklı modda yanlış şıkların çoğunu (12 şıkta 8'ini) eler, şıksız modda harf ipucu verir; o turun puanı yarıya iner
 let jokUsedN = -1;
 function updJoker(){
-  const b = $('jokerBtn'), r = R.round, me = (R.players || {})[pid] || {}, tot = (r && r.jok) || 0;
+  const b = $('jokerBtn'), r = R.round, me = (R.players || {})[pid] || {}, tot = r ? (r.jok || 0) + (me.jb || 0) : 0;
   b.classList.toggle('hidden', !tot || R.state === 'lobby' || R.state === 'end');
   if(!tot) return;
   const left = Math.max(0, tot - (me.jk || 0)), used = jokUsedN === r.n;
@@ -1276,6 +1276,7 @@ function isCorrect(ans, game){
   return cands.some(c => { if(a === c || aS === c.replace(/ /g,'') || (c.length >= 4 && lev(a, c) <= Math.max(1, Math.floor(c.length * 0.2)))) return true;
     const c0 = noNum(c); return c0 !== c && a0.length >= 4 && c0.length >= 4 && (a0 === c0 || lev(a0, c0) <= Math.floor(c0.length * 0.2)); });
 }
+const LEAD_PEN = 150; // lider yanlış yaparsa / cevap vermezse kaybettiği puan
 const speedPts = (t, span) => 500 + Math.round(500 * Math.max(0, 1 - t / span));
 $('opts').onclick = e => {
   const b = e.target.closest('.opt'); if(!b || b.disabled) return;
@@ -1299,7 +1300,7 @@ function onReveal(){
     else if(i === myAnswer) b.classList.add('wrong');
   }
   const mine = R.players[pid] && R.players[pid].last;
-  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine ? 'Doğru! +' + mine + ' puan' : 'Yanlış'}</div>` +
+  $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine > 0 ? 'Doğru! +' + mine + ' puan' : mine < 0 ? 'Lider cezası: ' + mine + ' puan' : 'Yanlış'}</div>` +
     (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}${a.j ? ' (joker)' : ''}${a.fx ? ' <small>(elle düzeltildi)</small>' : ''}</span><span>${a.ok ? '+' + a.pts : '✗'}${isHost ? `<button class="fix" data-k="${k}">${a.ok ? 'Yanlış say' : 'Doğru say'}</button>` : ''}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen bir cevabı yanındaki düğmeyle düzeltebilirsin.</small>' : ''}</div>` : '') +
     (v.vid ? `<div class="vote">Bu parça iyi bir seçim miydi? <button data-v="up" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'up' ? 'on' : ''}">👍</button><button data-v="down" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'down' ? 'on' : ''}">👎</button></div>` : '');
   $('result').classList.remove('hidden');
@@ -1325,7 +1326,7 @@ function readLobbySettings(){
 $('startBtn').onclick = async () => { prime(); readLobbySettings(); await room.update({ teams: H.teams || 0, total: H.total }); hostStart(); };
 $('againBtn').onclick = async () => {
   const ups = {};
-  for(const id in R.players){ ups['players/' + id + '/score'] = 0; ups['players/' + id + '/last'] = 0; ups['players/' + id + '/jk'] = 0; }
+  for(const id in R.players){ ups['players/' + id + '/score'] = 0; ups['players/' + id + '/last'] = 0; ups['players/' + id + '/jk'] = 0; ups['players/' + id + '/jb'] = 0; }
   ups.answers = null; ups.round = null; ups.reveal = null; ups.state = 'lobby';
   lastKey = '';
   await room.update(ups);
@@ -1347,6 +1348,10 @@ async function hostNext(){
   if(H.n >= H.total){ room.update({ state:'end' }); return; }
   if(!H.pool.length) H.pool = shuffle(gamesFor(H.diff));
   H.n++; H.game = H.pool.pop();
+  if(H.n === Math.floor(H.total / 2) + 1 && H.total >= 4){ // yarıda: puan tablosunun alt yarısına +1 joker
+    const l = ranked().filter(p => p.online);
+    if(l.length >= 2){ const u = {}; l.slice(Math.ceil(l.length / 2)).forEach(p => u['players/' + p.id + '/jb'] = (p.jb || 0) + 1); room.update(u); }
+  }
   setStatus('Şarkı aranıyor...', true);
   try{
     H.results = orderPool(await getPool(H.game)); H.idx = 0;
@@ -1386,7 +1391,7 @@ async function issueRound(){
   ups.state = 'play';
   const elim = shuffle(options.map((_, i) => i).filter(i => i !== H.correct)).slice(0, Math.max(1, options.length - 4));
   const hint = H.game.split(' ').map(w => /^[0-9IVX]+\W*$/.test(w) ? w : [...w].map((ch, i, a) => i === 0 || !/[\p{L}\p{N}]/u.test(ch) || !/[\p{L}\p{N}]/u.test(a[i-1]) ? ch : '_').join('')).join('   ');
-  ups.round = { n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode, jok:H.jokers || 0, elim, hint };
+  ups.round = { mult:(H.total >= 5 && H.n > H.total - 2) ? 2 : 1, n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode, jok:H.jokers || 0, elim, hint };
   room.update(ups);
   H.timer = setInterval(hostCheck, 500);
 }
@@ -1402,11 +1407,13 @@ async function hostReveal(ansIn){
   const r = R.round; if(!r || r.n !== H.n) return;
   const ans = ansIn || (await room.child('answers/' + H.n).get()).val() || {};
   const span = r.deadline - r.startAt;
-  const ups = {}, list = [];
+  const ups = {}, list = [], mult = r.mult || 1;
+  const rk = ranked(), lead = rk.length > 1 && (rk[0].score || 0) >= LEAD_PEN && (rk[0].score || 0) > (rk[1].score || 0) ? rk[0].id : null;
   for(const id in R.players){
     const a = ans[id];
     const ok = a ? (r.ansMode === 'text' ? isCorrect(a.txt, H.game) : a.i === H.correct) : false;
-    const pts = ok ? Math.round(speedPts(a.t, span) * (a.j ? 0.5 : 1)) : 0;
+    let pts = ok ? Math.round(speedPts(a.t, span) * (a.j ? 0.5 : 1) * mult) : 0;
+    if(!ok && id === lead && R.players[id].online) pts = -LEAD_PEN;
     if(a && r.ansMode === 'text') list.push({ id, name:R.players[id].name, txt:a.txt, t:a.t, ok, pts, j:a.j ? 1 : 0 });
     ups['players/' + id + '/score'] = (R.players[id].score || 0) + pts;
     ups['players/' + id + '/last'] = pts;
@@ -1422,7 +1429,7 @@ $('result').onclick = async e => {
   const d = e.target.closest('.alist button.fix');
   if(!d || !isHost || !R.reveal || !R.reveal.list || R.state !== 'reveal') return;
   const k = +d.dataset.k, it = R.reveal.list[k], r = R.round; if(!it || !r) return;
-  const ok = !it.ok, pts = ok ? Math.round(speedPts(it.t, r.deadline - r.startAt) * (it.j ? 0.5 : 1)) : 0;
+  const ok = !it.ok, pts = ok ? Math.round(speedPts(it.t, r.deadline - r.startAt) * (it.j ? 0.5 : 1) * (r.mult || 1)) : 0;
   const ups = {};
   ups['reveal/list/' + k + '/ok'] = ok; ups['reveal/list/' + k + '/pts'] = pts; ups['reveal/list/' + k + '/fx'] = 1;
   ups['players/' + it.id + '/score'] = ((R.players[it.id] || {}).score || 0) - (it.pts || 0) + pts;
