@@ -489,7 +489,7 @@ const EASY_GAMES = new Set(["Super Mario Bros", "Super Mario 64", "Super Mario O
 const HARD_GAMES = new Set(["Xenoblade Chronicles", "Fire Emblem Three Houses", "Final Fantasy XIV", "Final Fantasy VI", "Chrono Trigger", "Persona 4", "Deltarune", "Shovel Knight", "Katana Zero", "Dragon Age Origins", "Mass Effect", "Shadow of the Colossus", "Journey", "Metal Gear Solid 3 Snake Eater", "Silent Hill 2", "Civilization IV Baba Yetu", "Outer Wilds", "Bastion", "Transistor", "Hyper Light Drifter", "Risk of Rain 2", "Fez", "Slay the Spire", "Disco Elysium", "Death Stranding", "Hollow Knight Silksong", "Honkai Star Rail", "Professor Layton", "Ace Attorney", "Katamari Damacy", "Jet Set Radio", "Persona 3 Reload", "Kirby Super Star", "Metroid Prime", "Splatoon 2", "Kingdom Hearts II", "Bayonetta 2", "Bayonetta 3", "Frostpunk", "Rome Total War", "Mega Man 2", "Mega Man 3", "Yoshi's Island", "Super Mario Bros 2", "Kingdom Hearts III", "HuniePop", "Magicka 2", "Kenshi", "Duke Nukem", "Ultima Online", "XCOM Enemy Unknown", "Kirby's Dream Land", "FIFA 99", "Super Metroid", "Donkey Kong Country 2", "Castlevania Symphony of the Night", "Grim Fandango", "SimCity 4", "Monster Hunter Rise", "Warframe"]);
 // Seriler: aynı seriden oyunlar aynı soruda şık olarak çıkmaz; yazarak modda serinin herhangi bir oyunu/adı doğru sayılır
 const SERIES = {"Super Mario": ["Super Mario Bros", "Super Mario 64", "Super Mario Galaxy", "Super Mario Odyssey", "Super Mario World", "New Super Mario Bros", "Super Mario Bros 2"], "Zelda": ["The Legend of Zelda Ocarina of Time", "The Legend of Zelda Breath of the Wild", "The Legend of Zelda Tears of the Kingdom", "The Legend of Zelda Majora's Mask"], "Pokemon": ["Pokemon Red and Blue", "Pokemon Gold and Silver", "Pokemon Black and White", "Pokemon Platinum", "Pokemon Sword and Shield"], "Sonic": ["Sonic the Hedgehog", "Sonic Adventure 2", "Sonic Frontiers", "Sonic the Hedgehog 3"], "Mario Kart": ["Mario Kart 8", "Mario Kart Wii"], "Donkey Kong Country": ["Donkey Kong Country", "Donkey Kong Country 2"], "Kirby": ["Kirby Super Star", "Kirby's Dream Land"], "Metroid": ["Metroid Prime", "Super Metroid"], "Final Fantasy": ["Final Fantasy VII", "Final Fantasy X", "Final Fantasy XIV", "Final Fantasy VI", "Final Fantasy VII Remake"], "Kingdom Hearts": ["Kingdom Hearts", "Kingdom Hearts II", "Kingdom Hearts III"], "Persona": ["Persona 5", "Persona 4", "Persona 3 Reload"], "Undertale": ["Undertale", "Deltarune"], "Hollow Knight": ["Hollow Knight", "Hollow Knight Silksong"], "Halo": ["Halo", "Halo 3", "Halo Reach"], "Call of Duty": ["Call of Duty Modern Warfare 2", "Call of Duty Black Ops Zombies", "Call of Duty Black Ops", "Call of Duty Black Ops 2"], "Battlefield": ["Battlefield 1", "Battlefield 4"], "Doom": ["Doom 2016", "Doom Eternal", "Doom 1993"], "Portal": ["Portal", "Portal 2"], "BioShock": ["BioShock", "BioShock Infinite"], "Fallout": ["Fallout 3", "Fallout 4", "Fallout New Vegas"], "The Elder Scrolls": ["The Elder Scrolls V: Skyrim", "The Elder Scrolls IV: Oblivion"], "Mass Effect": ["Mass Effect", "Mass Effect 2"], "Red Dead Redemption": ["Red Dead Redemption", "Red Dead Redemption 2"], "GTA": ["GTA San Andreas", "GTA Vice City", "GTA IV", "GTA V"], "Assassin's Creed": ["Assassin's Creed II", "Assassin's Creed Black Flag"], "Uncharted": ["Uncharted 2", "Uncharted 4"], "The Last of Us": ["The Last of Us", "The Last of Us Part II"], "God of War": ["God of War 2018", "God of War Ragnarok"], "Dark Souls": ["Dark Souls", "Dark Souls III"], "Metal Gear": ["Metal Gear Solid", "Metal Gear Solid 3 Snake Eater", "Metal Gear Rising Revengeance"], "Resident Evil": ["Resident Evil 4", "Resident Evil 2 Remake"], "Street Fighter": ["Street Fighter II", "Street Fighter 6"], "Tekken": ["Tekken 3", "Tekken 7"], "Crash Bandicoot": ["Crash Bandicoot", "Crash Team Racing"], "Need for Speed": ["Need for Speed Most Wanted", "Need for Speed Underground 2"], "FIFA": ["FIFA 14", "FIFA 99"], "Warcraft": ["World of Warcraft", "Warcraft III"], "Diablo": ["Diablo II", "Diablo III"], "Age of Empires": ["Age of Empires II", "Age of Empires III"], "Civilization": ["Civilization IV Baba Yetu", "Civilization VI"], "Mega Man": ["Mega Man 2", "Mega Man 3"], "Bayonetta": ["Bayonetta 2", "Bayonetta 3"], "NieR": ["NieR Automata", "NieR Replicant"], "Total War": ["Medieval II: Total War"], "Hearts of Iron": ["Hearts of Iron IV"], "Europa Universalis": ["Europa Universalis IV"], "Bloons TD": ["Bloons TD 5"], "Electric Man": ["Electric Man 2"]};
-const SERIES_ALIAS = {"Hearts of Iron": ["hoi4", "hoi"], "Europa Universalis": ["eu4"], "Bloons TD": ["btd", "bloons"], "Total War": ["medieval 2 total war", "medieval 2"], "NieR": ["nier"], "Super Mario": ["mario"], "Zelda": ["legend of zelda"], "GTA": ["grand theft auto"], "Call of Duty": ["cod"], "Final Fantasy": ["ff"], "The Elder Scrolls": ["elder scrolls"], "Red Dead Redemption": ["red dead"], "Assassin's Creed": ["assassins creed"], "Need for Speed": ["nfs"], "Donkey Kong Country": ["donkey kong", "dkc"], "Metal Gear": ["metal gear solid", "mgs"], "Resident Evil": ["re"], "Age of Empires": ["aoe"], "Crash Bandicoot": ["crash"], "Pokemon": ["pokémon"], "Warcraft": ["wow"], "Kingdom Hearts": ["kh"], "Civilization": ["civ"]};
+const SERIES_ALIAS = {"Hearts of Iron": ["hoi4", "hoi"], "Europa Universalis": ["eu4"], "Bloons TD": ["btd", "bloons", "bloons tower defense"], "Total War": ["medieval 2 total war", "medieval 2"], "NieR": ["nier"], "Super Mario": ["mario"], "Zelda": ["legend of zelda"], "GTA": ["grand theft auto"], "Call of Duty": ["cod"], "Final Fantasy": ["ff"], "The Elder Scrolls": ["elder scrolls"], "Red Dead Redemption": ["red dead"], "Assassin's Creed": ["assassins creed"], "Need for Speed": ["nfs"], "Donkey Kong Country": ["donkey kong", "dkc"], "Metal Gear": ["metal gear solid", "mgs"], "Resident Evil": ["re"], "Age of Empires": ["aoe"], "Crash Bandicoot": ["crash"], "Pokemon": ["pokémon"], "Warcraft": ["wow"], "Kingdom Hearts": ["kh"], "Civilization": ["civ"]};
 const SERIES_OF = {}; for(const [s, gs] of Object.entries(SERIES)) gs.forEach(g => SERIES_OF[g] = s);
 const seriesKey = g => SERIES_OF[g] || g;
 // Temalar
@@ -1090,7 +1090,7 @@ function hideSugg(){ $('sugg').classList.add('hidden'); suggL = []; suggI = -1; 
 function showSugg(){
   const q = norm($('textIn').value), qs = q.replace(/ /g, '');
   if(q.length < 2 || $('textIn').disabled){ hideSugg(); return; }
-  const sc = g => { const n = norm(g); if(n.startsWith(q)) return 0; if((' ' + n).includes(' ' + q)) return 1; if(n.includes(q) || n.replace(/ /g, '').includes(qs)) return 2; return 9; };
+  const sc = g => { const n = norm(g); if(n.startsWith(q)) return 0; if((' ' + n).includes(' ' + q)) return 1; if(qs.length >= 2 && acr(g).startsWith(qs)) return 1; if(n.includes(q) || n.replace(/ /g, '').includes(qs)) return 2; return 9; };
   suggL = uniq(games).map(g => [g, sc(g)]).filter(x => x[1] < 9).sort((a,b) => a[1] - b[1] || a[0].length - b[0].length).slice(0, 7).map(x => x[0]);
   suggI = -1;
   if(!suggL.length){ hideSugg(); return; }
@@ -1113,6 +1113,15 @@ function norm(s){
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim()
     .split(' ').filter(w => w && w !== 'the').map(w => ROM[w] || w).join(' ');
 }
+// Kısaltma: 'Bloons TD 5' -> btd5, 'Hearts of Iron IV' -> hoi4, 'GTA V' -> gta5, 'CS:GO' -> csgo
+function acr(s){
+  let o = '';
+  for(const w of String(s).split(/[\s:\-–]+/)){ const n = norm(w); if(!n) continue;
+    if(/^\d+$/.test(n)) o += n; else if(/^[A-Z]{2,4}$/.test(w)) o += n; else o += n[0]; }
+  return o;
+}
+const acrLoose = s => norm(s).split(' ').map(w => /^\d+$/.test(w) ? w : w[0]).join('');
+const noNum = s => s.split(' ').filter(w => !/^\d+$/.test(w)).join(' ');
 function lev(a, b){
   let p = Array.from({length:b.length+1}, (_,j) => j);
   for(let i=1;i<=a.length;i++){ const c=[i]; for(let j=1;j<=b.length;j++) c[j] = Math.min(p[j]+1, c[j-1]+1, p[j-1] + (a[i-1]===b[j-1]?0:1)); p = c; }
@@ -1123,7 +1132,11 @@ function isCorrect(ans, game){
   const s = SERIES_OF[game];
   const names = s ? [...SERIES[s], s, ...(SERIES_ALIAS[s] || [])] : [game];
   const cands = names.flatMap(n => [n, ...n.split(':')]).map(norm).filter(Boolean);
-  return cands.some(c => a === c || a.replace(/ /g,'') === c.replace(/ /g,'') || (c.length >= 4 && lev(a, c) <= Math.max(1, Math.floor(c.length * 0.2))));
+  const a0 = noNum(a), aS = a.replace(/ /g,''), aA = acrLoose(a);
+  const acrs = names.flatMap(n => [n, ...n.split(':')]).map(acr).filter(x => x.length >= 3);
+  if(acrs.some(x => aS === x || (a.includes(' ') && x.length >= 4 && aA === x))) return true;
+  return cands.some(c => { if(a === c || aS === c.replace(/ /g,'') || (c.length >= 4 && lev(a, c) <= Math.max(1, Math.floor(c.length * 0.2)))) return true;
+    const c0 = noNum(c); return c0 !== c && a0.length >= 4 && c0.length >= 4 && (a0 === c0 || lev(a0, c0) <= Math.floor(c0.length * 0.2)); });
 }
 const speedPts = (t, span) => 500 + Math.round(500 * Math.max(0, 1 - t / span));
 $('opts').onclick = e => {
