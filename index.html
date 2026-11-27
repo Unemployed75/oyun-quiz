@@ -89,6 +89,15 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
 .alist div.ok{border-left:4px solid var(--ok)}
 .alist div.no{border-left:4px solid var(--bad)}
 .alist.host div{cursor:pointer}
+.teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.team{background:#0c1524;border:2px solid var(--line);border-radius:14px;padding:10px 12px;text-align:left}
+.team h3{margin:0 0 6px;font-size:17px}
+.team button{width:100%;min-height:38px;margin-top:8px}
+.tbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tbar span{border-radius:999px;padding:6px 12px;font-weight:700;background:#0c1524;border:2px solid var(--line)}
+.jbtn{margin-top:10px;width:100%}
+.hint{text-align:center;font:700 22px/1.4 monospace;letter-spacing:3px;color:var(--acc);margin-top:10px;word-break:break-word}
+.opt.elim{opacity:.25;text-decoration:line-through}
 .coverimg{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transform:scale(1.12);transition:filter .25s linear}
 .cover.withimg{background:#05080f}
 #coverCv{transform:none}
@@ -133,6 +142,8 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
           <div><label for="ansMode">Cevap</label><select id="ansMode"><option value="opts" selected>4 şık</option><option value="text">Yazarak (şıksız)</option></select></div>
           <div><label for="diff">Zorluk</label><select id="diff"><option value="easy">Kolay</option><option value="normal" selected>Normal</option><option value="hard">Zor</option></select></div>
           <div><label for="theme">Tema</label><select id="theme"><option value="all">Hepsi</option><option value="nintendo">Nintendo</option><option value="retro">Retro (2000 öncesi)</option><option value="fps">FPS / Nişancı</option><option value="rpg">RPG</option><option value="aksiyon">Aksiyon / Macera</option><option value="strateji">Strateji</option><option value="indie">Indie</option><option value="mobil">Mobil</option><option value="yaris">Yarış / Spor / Dövüş</option><option value="turkiye">Türkiye'de çok oynananlar</option></select></div>
+          <div><label for="teams">Takım</label><select id="teams"><option value="0" selected>Yok (herkes tek)</option><option value="2">2 takım</option><option value="3">3 takım</option></select></div>
+          <div><label for="jokers">Joker</label><select id="jokers"><option value="0">Yok</option><option value="1">1 hak</option><option value="2" selected>2 hak</option><option value="3">3 hak</option></select></div>
         </div>
         <details id="gDet" style="margin-top:14px">
           <summary style="cursor:pointer;font-weight:600">Oyun listesi (<span id="gCount"></span>)</summary>
@@ -160,6 +171,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
       <div class="code" id="lobbyCode"></div>
       <p class="dim">Arkadaşların <b id="siteUrl"></b> adresine girip bu kodu yazsın.</p>
       <div class="plist" id="lobbyPlayers" style="justify-content:center"></div>
+      <div class="teams hidden" id="teamPick"></div>
       <p class="dim" id="lobbyWait">Oyunu kuran kişinin başlatması bekleniyor...</p>
       <div class="hostbar hidden" id="lobbyHost"><button class="main" id="startBtn">Oyunu başlat</button></div>
       <p><label class="pill vol">Müzik sesi <input type="range" class="volIn" min="0" max="100" aria-label="Müzik sesi"></label></p>
@@ -188,6 +200,8 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
       </div>
       <div class="opts" id="opts"></div>
       <div class="row hidden" id="textBox" style="margin-top:14px"><div style="position:relative"><input id="textIn" placeholder="Oyunun adını yaz" autocomplete="off" maxlength="60"><div id="sugg" class="sugg hidden"></div></div><button class="main" id="textBtn" style="flex:0 0 auto">Gönder</button></div>
+      <div class="hint hidden" id="hintBox"></div>
+      <button class="jbtn hidden" id="jokerBtn">Joker</button>
       <div class="result hidden" id="result"></div>
       <div class="hostbar hidden" id="hostBar">
         <button id="skipBtn">Yanlış şarkı / değiştir</button>
@@ -197,6 +211,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
     </div>
     <div class="card">
       <h2>Puan tablosu</h2>
+      <div class="tbar hidden" id="teamBar"></div>
       <table><tbody id="board"></tbody></table>
     </div>
   </section>
@@ -206,6 +221,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
     <div class="card" style="max-width:560px;margin:0 auto">
       <h2 style="text-align:center">Oyun bitti</h2>
       <div class="winner" id="winner"></div>
+      <div class="tbar hidden" id="teamFinal" style="justify-content:center"></div>
       <table><tbody id="finalBoard"></tbody></table>
       <div class="hostbar"><button class="main hidden" id="againBtn">Aynı odada yeniden oyna</button><button id="leaveBtn">Ana sayfaya dön</button></div>
     </div>
@@ -942,8 +958,8 @@ $('createBtn').onclick = async () => {
     let c, tries = 0;
     do{ c = Array.from({length:4}, () => letters[Math.floor(Math.random()*letters.length)]).join(''); tries++; }
     while((await db.ref('rooms/' + c + '/state').get()).exists() && tries < 10);
-    H.total = +$('rounds').value; H.listen = +$('listen').value; H.startMode = $('startMode').value; H.mode = $('mode').value; H.ansMode = $('ansMode').value; H.diff = $('diff').value; H.theme = $('theme').value;
-    await db.ref('rooms/' + c).set({ host:pid, state:'lobby', created:firebase.database.ServerValue.TIMESTAMP, total:H.total });
+    H.total = +$('rounds').value; H.listen = +$('listen').value; H.startMode = $('startMode').value; H.mode = $('mode').value; H.ansMode = $('ansMode').value; H.diff = $('diff').value; H.theme = $('theme').value; H.teams = +$('teams').value; H.jokers = +$('jokers').value;
+    await db.ref('rooms/' + c).set({ host:pid, state:'lobby', created:firebase.database.ServerValue.TIMESTAMP, total:H.total, teams:H.teams });
     await enterRoom(c, name, true);
   }catch(e){ $('createMsg').textContent = 'Oda kurulamadı: ' + e.message; }
 };
@@ -952,7 +968,7 @@ async function enterRoom(c, name, host){
   code = c; isHost = host; room = db.ref('rooms/' + c);
   const me = room.child('players/' + pid);
   const old = (await me.get()).val();
-  await me.set({ name, score: old ? old.score || 0 : 0, online:true });
+  await me.set({ name, score: old ? old.score || 0 : 0, online:true, team: old ? old.team || 0 : 0, jk: old ? old.jk || 0 : 0 });
   me.child('online').onDisconnect().set(false);
   if(host) room.child('host').set(pid);
   $('lobbyCode').textContent = c;
@@ -961,6 +977,7 @@ async function enterRoom(c, name, host){
   $('hostBar').classList.toggle('hidden', !host);
   $('againBtn').classList.toggle('hidden', !host);
   room.child('players').on('value', s => { R.players = s.val() || {}; renderPlayers(); if(R.reveal) onReveal(); });
+  room.child('teams').on('value', s => { R.teams = s.val() || 0; renderPlayers(); });
   room.child('state').on('value', s => { R.state = s.val(); onState(); });
   room.child('round').on('value', s => { R.round = s.val(); onRound(); });
   room.child('reveal').on('value', s => { R.reveal = s.val(); onReveal(); });
@@ -969,11 +986,26 @@ async function enterRoom(c, name, host){
 
 /* ===== ekranlar ===== */
 function ranked(){ return Object.entries(R.players).map(([id,p]) => ({ id, ...p })).sort((a,b) => (b.score||0) - (a.score||0)); }
+// Takımlar
+const TEAMS = [['Kırmızı','#ff5c6c'],['Mavi','#4ea8ff'],['Yeşil','#3ddc97']];
+function teamTotals(){
+  const n = R.teams || 0, t = Array.from({length:n}, (_,i) => ({ i, name:TEAMS[i][0], c:TEAMS[i][1], score:0, members:[] }));
+  for(const p of ranked()){ const k = (p.team || 0) - 1; if(k >= 0 && k < n){ t[k].score += p.score || 0; t[k].members.push(p); } }
+  return t;
+}
+const dot = p => (R.teams && p.team >= 1 && p.team <= R.teams) ? `<span style="color:${TEAMS[p.team-1][1]}">●</span> ` : '';
+const tbar = () => teamTotals().sort((a,b) => b.score - a.score).map(t => `<span style="border-color:${t.c};color:${t.c}">${t.name}: ${t.score}</span>`).join('');
 function renderPlayers(){
-  const list = ranked();
-  $('lobbyPlayers').innerHTML = list.map(p => `<span class="${p.online ? '' : 'off'}">${esc(p.name)}</span>`).join('');
-  $('board').innerHTML = list.map(p => `<tr class="${p.id === pid ? 'me' : ''}"><td>${esc(p.name)}${p.online ? '' : ' <small>(çıktı)</small>'}</td><td class="d">${R.reveal && p.last ? '+' + p.last : ''}</td><td class="n">${p.score||0}</td></tr>`).join('');
-  $('finalBoard').innerHTML = list.map((p,i) => `<tr><td>${i+1}. ${esc(p.name)}</td><td class="n">${p.score||0}</td></tr>`).join('');
+  const list = ranked(), tn = R.teams || 0, myT = (R.players[pid] || {}).team;
+  $('teamPick').classList.toggle('hidden', !tn); $('teamBar').classList.toggle('hidden', !tn); $('teamFinal').classList.toggle('hidden', !tn);
+  if(tn){
+    $('teamPick').innerHTML = teamTotals().map(t => `<div class="team" style="border-color:${myT === t.i+1 ? t.c : 'var(--line)'}"><h3 style="color:${t.c}">${t.name} takımı</h3><div class="dim">${t.members.map(p => esc(p.name)).join(', ') || 'Henüz kimse yok'}</div><button data-t="${t.i+1}" ${myT === t.i+1 ? 'disabled' : ''}>${myT === t.i+1 ? 'Bu takımdasın' : 'Bu takıma geç'}</button></div>`).join('');
+    $('teamBar').innerHTML = $('teamFinal').innerHTML = tbar();
+  }
+  updJoker();
+  $('lobbyPlayers').innerHTML = list.map(p => `<span class="${p.online ? '' : 'off'}">${dot(p)}${esc(p.name)}</span>`).join('');
+  $('board').innerHTML = list.map(p => `<tr class="${p.id === pid ? 'me' : ''}"><td>${dot(p)}${esc(p.name)}${p.online ? '' : ' <small>(çıktı)</small>'}</td><td class="d">${R.reveal && p.last ? '+' + p.last : ''}</td><td class="n">${p.score||0}</td></tr>`).join('');
+  $('finalBoard').innerHTML = list.map((p,i) => `<tr><td>${i+1}. ${dot(p)}${esc(p.name)}</td><td class="n">${p.score||0}</td></tr>`).join('');
 }
 function onState(){
   if(R.state === 'lobby'){ clearTimers(); try{ yt.stopVideo(); }catch(e){} lastKey = ''; myAnswer = null; revealedN = -1; $('unlock').classList.add('hidden'); show('lobby'); }
@@ -983,6 +1015,10 @@ function onState(){
     const list = ranked(), best = list.length ? list[0].score || 0 : 0;
     const w = list.filter(p => (p.score||0) === best).map(p => p.name);
     $('winner').textContent = best > 0 ? (w.length > 1 ? 'Berabere: ' + w.join(', ') : w[0] + ' kazandı!') : 'Kimse puan alamadı';
+    if(R.teams){
+      const tt = teamTotals().sort((a,b) => b.score - a.score), tb = tt.length ? tt[0].score : 0, tw = tt.filter(t => t.score === tb);
+      $('winner').textContent = tb > 0 ? (tw.length > 1 ? 'Berabere: ' + tw.map(t => t.name).join(', ') : tw[0].name + ' takımı kazandı!') : 'Kimse puan alamadı';
+    }
     show('end');
   }
 }
@@ -1022,6 +1058,7 @@ function onRound(){
   $('cover').classList.remove('withimg'); $('coverCv').classList.toggle('hidden', !useImg); $('coverCv').style.opacity = '0';
   if(useImg){ lastPx = ''; img.src = r.cover; }
   renderOptions();
+  $('hintBox').classList.add('hidden'); updJoker();
   const txtMode = r.ansMode === 'text';
   $('opts').classList.toggle('hidden', txtMode); $('textBox').classList.toggle('hidden', !txtMode);
   hideSugg(); $('textIn').value = ''; $('textIn').disabled = true; $('textBtn').disabled = true;
@@ -1057,17 +1094,41 @@ function renderOptions(){
   $('opts').innerHTML = r.options.map((g,i) => `<button class="opt" data-i="${i}" disabled><b>${'ABCD'[i]}</b>${esc(g)}</button>`).join('');
 }
 function enableOptions(on){
-  for(const b of $('opts').querySelectorAll('.opt')) b.disabled = !on || myAnswer !== null;
+  for(const b of $('opts').querySelectorAll('.opt')) b.disabled = !on || myAnswer !== null || b.classList.contains('elim');
   $('textIn').disabled = $('textBtn').disabled = !on || myAnswer !== null;
+  updJoker();
   if(on && myAnswer === null && R.round && R.round.ansMode === 'text') $('textIn').focus();
 }
 function sendText(){
   const r = R.round, v = $('textIn').value.trim();
   if(!v || !r || myAnswer !== null || now() > r.deadline || (R.reveal && R.reveal.n === r.n)) return;
   myAnswer = v; enableOptions(false);
-  room.child('answers/' + r.n + '/' + pid).set({ txt:v, t:Math.max(0, now() - r.startAt) });
+  room.child('answers/' + r.n + '/' + pid).set({ txt:v, t:Math.max(0, now() - r.startAt), j: jokUsedN === r.n ? 1 : 0 });
+  updJoker();
   setStatus('Cevabın alındı: ' + v, true);
 }
+// Joker: şıklı modda 2 yanlış şıkkı eler, şıksız modda harf ipucu verir; o turun puanı yarıya iner
+let jokUsedN = -1;
+function updJoker(){
+  const b = $('jokerBtn'), r = R.round, me = (R.players || {})[pid] || {}, tot = (r && r.jok) || 0;
+  b.classList.toggle('hidden', !tot || R.state === 'lobby' || R.state === 'end');
+  if(!tot) return;
+  const left = Math.max(0, tot - (me.jk || 0)), used = jokUsedN === r.n;
+  b.textContent = used ? 'Joker kullanıldı (bu turun puanı yarıya iner)' : 'Joker kullan: ' + (r.ansMode === 'text' ? 'harf ipucu' : '2 yanlış şıkkı ele') + ' (' + left + ' hak kaldı)';
+  b.disabled = used || left <= 0 || myAnswer !== null || now() < r.startAt || now() > r.deadline || !!(R.reveal && R.reveal.n === r.n);
+}
+function applyJoker(){
+  const r = R.round; if(!r || jokUsedN !== r.n) return;
+  if(r.ansMode === 'text'){ $('hintBox').textContent = r.hint || ''; $('hintBox').classList.remove('hidden'); $('textIn').focus(); }
+  else for(const b of $('opts').querySelectorAll('.opt')) if((r.elim || []).includes(+b.dataset.i)){ b.classList.add('elim'); b.disabled = true; }
+}
+$('jokerBtn').onclick = () => {
+  const r = R.round; if(!r || $('jokerBtn').disabled) return;
+  jokUsedN = r.n;
+  room.child('players/' + pid + '/jk').set(firebase.database.ServerValue.increment(1));
+  applyJoker(); updJoker();
+};
+$('teamPick').onclick = e => { const b = e.target.closest('button[data-t]'); if(!b || !room || R.state !== 'lobby') return; room.child('players/' + pid + '/team').set(+b.dataset.t); };
 const voted = {};
 let revealedN = -1;
 $('result').addEventListener('click', e => {
@@ -1140,14 +1201,14 @@ $('opts').onclick = e => {
   const r = R.round; if(!r || now() > r.deadline || (R.reveal && R.reveal.n === r.n)) return;
   myAnswer = +b.dataset.i;
   b.classList.add('picked'); enableOptions(false);
-  room.child('answers/' + r.n + '/' + pid).set({ i:myAnswer, t:Math.max(0, now() - r.startAt) });
+  room.child('answers/' + r.n + '/' + pid).set({ i:myAnswer, t:Math.max(0, now() - r.startAt), j: jokUsedN === r.n ? 1 : 0 });
   setStatus('Cevabın alındı, bekleniyor...', true);
 };
 function onReveal(){
   const v = R.reveal, r = R.round;
   renderPlayers();
   if(!v || !r || v.n !== r.n || R.state === 'lobby' || R.state === 'end') return;
-  clearTimers(); $('unlock').classList.add('hidden');
+  clearTimers(); $('unlock').classList.add('hidden'); updJoker();
   $('cover').classList.add('off');
   if(revealedN !== v.n){ revealedN = v.n; try{ yt.playVideo(); }catch(e){} }
   $('timeLbl').textContent = 'Cevap';
@@ -1158,7 +1219,7 @@ function onReveal(){
   }
   const mine = R.players[pid] && R.players[pid].last;
   $('result').innerHTML = `<div class="name">${esc(v.game)}</div><div class="dim">${esc(v.title || '')}</div><div style="margin-top:8px">${myAnswer === null ? 'Cevap vermedin' : mine ? 'Doğru! +' + mine + ' puan' : 'Yanlış'}</div>` +
-    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div data-k="${k}" class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}</span><span>${a.ok ? '+' + a.pts : '✗'}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen cevaba tıklayıp düzeltebilirsin.</small>' : ''}</div>` : '') +
+    (v.list ? `<div class="alist${isHost ? ' host' : ''}">${v.list.map((a,k) => `<div data-k="${k}" class="${a.ok ? 'ok' : 'no'}"><span><b>${esc(a.name)}</b>: ${esc(a.txt)}${a.j ? ' (joker)' : ''}</span><span>${a.ok ? '+' + a.pts : '✗'}</span></div>`).join('')}${isHost ? '<small>Yanlış değerlendirilen cevaba tıklayıp düzeltebilirsin.</small>' : ''}</div>` : '') +
     (v.vid ? `<div class="vote">Bu parça iyi bir seçim miydi? <button data-v="up" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'up' ? 'on' : ''}">👍</button><button data-v="down" ${voted[v.n] ? 'disabled' : ''} class="${voted[v.n] === 'down' ? 'on' : ''}">👎</button></div>` : '');
   $('result').classList.remove('hidden');
 }
@@ -1167,7 +1228,7 @@ function onReveal(){
 $('startBtn').onclick = () => { prime(); hostStart(); };
 $('againBtn').onclick = async () => {
   const ups = {};
-  for(const id in R.players){ ups['players/' + id + '/score'] = 0; ups['players/' + id + '/last'] = 0; }
+  for(const id in R.players){ ups['players/' + id + '/score'] = 0; ups['players/' + id + '/last'] = 0; ups['players/' + id + '/jk'] = 0; }
   ups.answers = null; ups.round = null; ups.reveal = null; ups.state = 'lobby';
   lastKey = '';
   await room.update(ups);
@@ -1175,7 +1236,13 @@ $('againBtn').onclick = async () => {
 $('leaveBtn').onclick = () => location.reload();
 function hostStart(){
   H.pool = shuffle(gamesFor(H.diff)); H.n = 0;
-  room.update({ state:'play', total:H.total });
+  const ups = { state:'play', total:H.total }, tn = R.teams || 0;
+  if(tn){ // takımı olmayanları en az kişili takıma koy
+    const cnt = Array(tn).fill(0), ids = Object.keys(R.players);
+    ids.forEach(id => { const t = R.players[id].team; if(t >= 1 && t <= tn) cnt[t-1]++; });
+    ids.forEach(id => { const t = R.players[id].team; if(!(t >= 1 && t <= tn)){ const k = cnt.indexOf(Math.min(...cnt)); cnt[k]++; ups['players/' + id + '/team'] = k + 1; } });
+  }
+  room.update(ups);
   hostNext();
 }
 async function hostNext(){
@@ -1216,7 +1283,9 @@ async function issueRound(){
   ups['answers/' + H.n] = null;
   ups.reveal = null;
   ups.state = 'play';
-  ups.round = { n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode };
+  const elim = shuffle([0,1,2,3].filter(i => i !== H.correct)).slice(0, 2);
+  const hint = H.game.split(' ').map(w => /^[0-9IVX]+\W*$/.test(w) ? w : [...w].map((ch, i, a) => i === 0 || !/[\p{L}\p{N}]/u.test(ch) || !/[\p{L}\p{N}]/u.test(a[i-1]) ? ch : '_').join('')).join('   ');
+  ups.round = { n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:H.ansMode, jok:H.jokers || 0, elim, hint };
   room.update(ups);
   H.timer = setInterval(hostCheck, 500);
 }
@@ -1236,8 +1305,8 @@ async function hostReveal(ansIn){
   for(const id in R.players){
     const a = ans[id];
     const ok = a ? (r.ansMode === 'text' ? isCorrect(a.txt, H.game) : a.i === H.correct) : false;
-    const pts = ok ? speedPts(a.t, span) : 0;
-    if(a && r.ansMode === 'text') list.push({ id, name:R.players[id].name, txt:a.txt, t:a.t, ok, pts });
+    const pts = ok ? Math.round(speedPts(a.t, span) * (a.j ? 0.5 : 1)) : 0;
+    if(a && r.ansMode === 'text') list.push({ id, name:R.players[id].name, txt:a.txt, t:a.t, ok, pts, j:a.j ? 1 : 0 });
     ups['players/' + id + '/score'] = (R.players[id].score || 0) + pts;
     ups['players/' + id + '/last'] = pts;
   }
@@ -1252,7 +1321,7 @@ $('result').onclick = async e => {
   const d = e.target.closest('.alist div[data-k]');
   if(!d || !isHost || !R.reveal || !R.reveal.list || R.state !== 'reveal') return;
   const k = +d.dataset.k, it = R.reveal.list[k], r = R.round; if(!it || !r) return;
-  const ok = !it.ok, pts = ok ? speedPts(it.t, r.deadline - r.startAt) : 0;
+  const ok = !it.ok, pts = ok ? Math.round(speedPts(it.t, r.deadline - r.startAt) * (it.j ? 0.5 : 1)) : 0;
   const ups = {};
   ups['reveal/list/' + k + '/ok'] = ok; ups['reveal/list/' + k + '/pts'] = pts;
   ups['players/' + it.id + '/score'] = ((R.players[it.id] || {}).score || 0) - (it.pts || 0) + pts;
