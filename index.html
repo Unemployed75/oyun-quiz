@@ -1090,7 +1090,7 @@ function hideSugg(){ $('sugg').classList.add('hidden'); suggL = []; suggI = -1; 
 function showSugg(){
   const q = norm($('textIn').value), qs = q.replace(/ /g, '');
   if(q.length < 2 || $('textIn').disabled){ hideSugg(); return; }
-  const sc = g => { const n = norm(g); if(n.startsWith(q)) return 0; if((' ' + n).includes(' ' + q)) return 1; if(qs.length >= 2 && acr(g).startsWith(qs)) return 1; if(n.includes(q) || n.replace(/ /g, '').includes(qs)) return 2; return 9; };
+  const sc = g => { const n = norm(g); if(n.startsWith(q)) return 0; if((' ' + n).includes(' ' + q)) return 1; if(n.includes(q) || n.replace(/ /g, '').includes(qs)) return 2; return 9; };
   suggL = uniq(games).map(g => [g, sc(g)]).filter(x => x[1] < 9).sort((a,b) => a[1] - b[1] || a[0].length - b[0].length).slice(0, 7).map(x => x[0]);
   suggI = -1;
   if(!suggL.length){ hideSugg(); return; }
