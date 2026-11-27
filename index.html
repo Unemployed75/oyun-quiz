@@ -1651,6 +1651,12 @@ async function hostNext(){
     H.n--; setStatus(e.message);
   }
 }
+let frG = null;
+function frGroups(){ // seri -> o serideki oyunlar (şık listesi için, bir kez hesaplanır)
+  if(frG) return frG; frG = new Map();
+  for(const g of uniq([...games, ...EXTRA_OPTS])){ const c = classify(g); if(!c || !c.s) continue; if(!frG.has(c.s)) frG.set(c.s, []); frG.get(c.s).push(g); }
+  return frG;
+}
 async function issueRound(){
   clearInterval(H.timer); clearTimeout(H.nextT);
   const v = H.results[H.idx];
@@ -1661,8 +1667,19 @@ async function issueRound(){
   const fams = new Set([fam(H.game)]);
   const near = { 0.8: [], 0.6: [] };
   for(const g of uniq([...games, ...EXTRA_OPTS])){ if(g === H.game) continue; const l = answerLevel(g, H.game, false); if(l === 0.8 || l === 0.6) near[l].push(g); }
-  for(const l of [0.8, 0.6]){ const c = shuffle(near[l]).find(g => !picked.some(o => o !== H.game && (isExact(g, o) || isExact(o, g)))); if(c && Math.random() < 0.85){ picked.push(c); fams.add(fam(c)); usedS.add(seriesKey(c)); } }
+  for(const [l, p] of [[0.8, 0.45], [0.6, 0.3]]){ const c = shuffle(near[l]).find(g => !picked.some(o => o !== H.game && (isExact(g, o) || isExact(o, g)))); if(c && Math.random() < p){ picked.push(c); fams.add(fam(c)); usedS.add(seriesKey(c)); } }
   const clash = g => fams.has(fam(g)) || picked.some(o => answerLevel(g, o, false) > 0 || answerLevel(o, g, false) > 0);
+  // Şaşırtma: başka serilerden de 3 tane "aynı seriden iki oyun" çifti koy, cevabın serisi göze batmasın
+  const ansC = classify(H.game) || {};
+  let pairs = 0;
+  for(const [s, l] of shuffle([...frGroups().entries()])){
+    if(pairs >= 3 || picked.length > NOPT - 2) break;
+    if(l.length < 2 || s === ansC.s || (classify(l[0]) || {}).f === ansC.f) continue;
+    const c = shuffle(l).filter(g => g !== H.game && !clash(g));
+    const a = c[0], b = a && c.find(x => x !== a && canon(x) !== canon(a) && !isExact(x, a) && !isExact(a, x));
+    if(!b) continue;
+    picked.push(a, b); for(const g of [a, b]){ fams.add(fam(g)); usedS.add(seriesKey(g)); } pairs++;
+  }
   for(const pool of [[...gamesFor(H.diff), ...EXTRA_OPTS], games]){
     for(const g of shuffle(uniq(pool).filter(g => g !== H.game))){ if(picked.length >= NOPT) break; const k = seriesKey(g); if(usedS.has(k) || clash(g)) continue; usedS.add(k); fams.add(fam(g)); picked.push(g); }
     if(picked.length >= NOPT) break;
