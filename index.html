@@ -53,6 +53,7 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .stage #yt,.stage iframe{position:absolute;inset:0;width:100%;height:100%}
 .cover{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:radial-gradient(circle at 50% 40%,#22406e,#0b1322 70%);text-align:center;padding:16px;z-index:2}
 .cover.off{display:none}
+.genretag{position:absolute;top:48px;left:50%;transform:translateX(-50%);background:#ffd34d;color:#1a1200;font-weight:700;padding:6px 16px;border-radius:999px;font-size:16px;z-index:5;white-space:nowrap;box-shadow:0 2px 10px #0008}
 .disc{width:min(26vw,120px);aspect-ratio:1;border-radius:50%;background:repeating-radial-gradient(circle,#111 0 3px,#1c1c1c 3px 6px);border:4px solid #333;position:relative;box-shadow:0 10px 40px #0008}
 .disc::after{content:"";position:absolute;inset:36%;border-radius:50%;background:var(--acc)}
 .spin .disc{animation:spin 1.6s linear infinite}
@@ -148,9 +149,9 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
         <small>Sadece odayı kuran girer, bu tarayıcıda hatırlanır.</small>
         <div class="row">
           <div><label for="rounds">Tur</label><select id="rounds"><option>5</option><option selected>10</option><option>15</option><option>20</option><option>30</option></select></div>
-          <div><label for="listen">Dinleme</label><select id="listen"><option value="5">5 sn</option><option value="10" selected>10 sn</option><option value="15">15 sn</option><option value="20">20 sn</option></select></div>
+          <div><label for="listen">Dinleme</label><select id="listen"><option value="5">5 sn</option><option value="10">10 sn</option><option value="15">15 sn</option><option value="20">20 sn</option><option value="30" selected>30 sn</option></select></div>
           <div><label for="startMode">Başlangıç</label><select id="startMode"><option value="mid" selected>Ortalardan</option><option value="begin">Baştan</option></select></div>
-          <div><label for="mode">Mod</label><select id="mode"><option value="classic" selected>Klasik</option><option value="cover">Kapak modu (30 sn)</option></select></div>
+          <div><label for="mode">Mod</label><select id="mode"><option value="cover" selected>Kapak modu</option></select></div>
           <div><label for="ansMode">Cevap</label><select id="ansMode"><option value="opts" selected>Şıklı (16 şık)</option><option value="text">Yazarak (şıksız)</option><option value="mix">Karışık (her tur rastgele)</option></select></div>
           <div><label for="diff">Zorluk</label><select id="diff"><option value="easy">Kolay</option><option value="normal" selected>Normal</option><option value="hard">Zor</option></select></div>
           <div><label for="theme">Tema</label><select id="theme"><option value="all">Hepsi</option><option value="nintendo">Nintendo</option><option value="retro">Retro (2000 öncesi)</option><option value="fps">FPS / Nişancı</option><option value="rpg">RPG</option><option value="aksiyon">Aksiyon / Macera</option><option value="strateji">Strateji</option><option value="indie">Indie</option><option value="mobil">Mobil</option><option value="yaris">Yarış / Spor / Dövüş</option><option value="turkiye">Türkiye'de çok oynananlar</option></select></div>
@@ -206,6 +207,7 @@ tr.me td:first-child{color:var(--blue);font-weight:700}
           <img class="hidden" id="coverImg" alt="">
           <canvas class="coverimg hidden" id="coverCv"></canvas>
           <div class="disc"></div>
+          <div class="genretag hidden" id="genreTag"></div>
           <div class="status" id="status">Hazırlanıyor...</div>
           <div class="bar"><i id="barFill"></i></div>
         </div>
@@ -671,7 +673,7 @@ let room = null, code = null, isHost = false;
 let R = { round:null, reveal:null, players:{}, state:null };
 let myAnswer = null, lastKey = '', yt = null, ytReady = false, stopT = null, tickT = null, playWatch = null, unlocked = false;
 // sadece oda kurucusunda
-let H = { pool:[], n:0, total:10, listen:10, startMode:'mid', mode:'classic', ansMode:'opts', diff:'normal', recent:[], game:null, results:[], idx:0, correct:-1, timer:null, nextT:null };
+let H = { pool:[], n:0, total:10, listen:30, startMode:'mid', mode:'cover', ansMode:'opts', diff:'normal', recent:[], game:null, results:[], idx:0, correct:-1, timer:null, nextT:null };
 
 /* ===== YouTube ===== */
 window.onYouTubeIframeAPIReady = () => {
@@ -1212,7 +1214,7 @@ function onRound(){
   const r = R.round; if(!r) return;
   const key = r.n + ':' + r.videoId;
   if(key === lastKey) return;
-  lastKey = key; myAnswer = null; clearTimers();
+  lastKey = key; myAnswer = null; clearTimers(); $('genreTag').classList.add('hidden');
   $('roundLbl').textContent = `Tur ${r.n}/${r.total}` + (r.mult > 1 ? ' · ' + r.mult + 'x puan' : '') + (r.fast ? ' · Hızlı tur' : '');
   $('result').classList.add('hidden');
   $('cover').classList.remove('off');
@@ -1234,10 +1236,13 @@ function onRound(){
     $('timeLbl').textContent = now() < r.startAt ? 'Başlıyor...' : left + ' sn';
     const p = Math.min(1, Math.max(0, (now() - r.startAt) / (r.listen*1000)));
     $('barFill').style.width = (p*100) + '%';
+    const L = r.listen * 1000, el = now() - r.startAt;
+    // son 5 sn: oyunun türü ekranda çıkar (hızlı turda yok)
+    if(r.genre && !r.fast && el >= 0 && L - el <= 5000){ $('genreTag').textContent = 'Tür: ' + r.genre; $('genreTag').classList.remove('hidden'); }
     if(r.mode === 'cover' && r.cover){
-      const el = now() - r.startAt, shown = el >= 8000, ci = $('coverImg');
-      const last = r.listen * 1000 - el <= 2000; // son 2 sn: kapak rahatça tanınır hale gelir
-      const q = Math.min(1, Math.max(0, (el - 8000) / ((r.listen - 9.5) * 1000)));
+      const showAt = Math.min(8000, L * 0.27), shown = el >= showAt, ci = $('coverImg');
+      const last = !r.fast && L - el <= Math.min(2000, L * 0.15); // son 2 sn: kapak rahatça tanınır hale gelir
+      const q = Math.min(1, Math.max(0, (el - showAt) / Math.max(1, L - showAt - 1500)));
       $('cover').classList.toggle('withimg', shown);
       $('coverCv').style.opacity = shown ? '1' : '0';
       if(shown) drawPixel(last ? 17.5 / 19 : Math.pow(q, 1.3) * 0.68);
@@ -1651,6 +1656,7 @@ async function hostNext(){
     H.n--; setStatus(e.message);
   }
 }
+const GENRE = {}; for(const [k, gs] of Object.entries({"Platform": ["Super Mario Bros", "Super Mario 64", "Super Mario Galaxy", "Super Mario Odyssey", "Sonic the Hedgehog", "Sonic Adventure 2", "Donkey Kong Country", "Kirby Super Star", "Celeste", "Cuphead", "Shovel Knight", "Crash Bandicoot", "Spyro the Dragon", "Rayman Legends", "Super Meat Boy", "Mega Man 3", "Super Mario World", "New Super Mario Bros", "Super Mario Bros 2", "Kirby's Dream Land", "Mega Man 2", "Sonic the Hedgehog 3", "Donkey Kong Country 2", "Geometry Dash", "Sonic Frontiers", "Sly Cooper", "Ratchet and Clank", "Jak and Daxter", "Clustertruck", "SpeedRunners", "Transformice", "BattleBlock Theater"], "Metroidvania": ["Hollow Knight", "Hollow Knight Silksong", "Ori and the Blind Forest", "Ori and the Will of the Wisps", "Super Metroid"], "Aksiyon-macera": ["The Legend of Zelda Ocarina of Time", "The Legend of Zelda Breath of the Wild", "The Legend of Zelda Tears of the Kingdom", "The Legend of Zelda Majora's Mask", "Metroid Prime", "Prince of Persia", "Uncharted 2", "Uncharted 4", "The Last of Us", "The Last of Us Part II", "God of War 2018", "God of War Ragnarok", "Ghost of Tsushima", "Horizon Zero Dawn", "Spider-Man PS4", "Batman Arkham City", "Batman Arkham Asylum", "Shadow of the Colossus", "Assassin's Creed II", "Assassin's Creed Black Flag", "Assassin's Creed Odyssey", "Tomb Raider", "Infamous", "Infamous Second Son", "Yakuza 0", "Sea of Thieves"], "Hack and slash": ["Devil May Cry 5", "Bayonetta 2", "Bayonetta 3", "Metal Gear Rising Revengeance", "God of War 1", "God of War II", "God of War III", "Darksiders II", "Phantom Blade Zero", "Chivalry 2"], "Soulslike": ["Bloodborne", "Dark Souls", "Dark Souls III", "Elden Ring", "Sekiro", "Black Myth Wukong"], "Açık dünya aksiyon": ["GTA San Andreas", "GTA Vice City", "GTA IV", "GTA V", "Red Dead Redemption", "Red Dead Redemption 2", "Mafia", "Bully"], "Gizlilik": ["Metal Gear Solid", "Metal Gear Solid 3 Snake Eater"], "FPS": ["Halo", "Halo 3", "Halo Reach", "Call of Duty Modern Warfare 2", "Call of Duty Black Ops Zombies", "Call of Duty Black Ops", "Call of Duty Black Ops 2", "Call of Duty 4 Modern Warfare", "Battlefield 1", "Battlefield 4", "Doom 2016", "Doom Eternal", "Doom 1993", "Half-Life", "Half-Life 2", "Team Fortress 2", "Counter-Strike Global Offensive", "Left 4 Dead 2", "BioShock", "BioShock Infinite", "Far Cry 3", "Titanfall 2", "Ultrakill", "Crysis 3", "Metro 2033", "Metro Last Light", "Metro Exodus", "Duke Nukem", "Wolfteam", "Zula", "Valorant", "Overwatch", "Destiny 2", "Rainbow Six Siege", "Superhot", "Deus Ex", "System Shock", "Prey", "Borderlands 2", "Payday 2", "Ready or Not", "The Finals", "Deep Rock Galactic", "Postal 2", "Mirror's Edge"], "TPS (üçüncü şahıs nişancı)": ["Gears of War", "Max Payne", "Max Payne 3", "Warframe", "Helldivers 2"], "Battle royale": ["Fortnite", "PUBG", "Apex Legends"], "Bulmaca": ["Tetris", "Portal", "Portal 2", "Candy Crush Saga", "Angry Birds", "Fireboy and Watergirl", "PICO PARK", "Limbo", "Katamari Damacy", "Bad Ice-Cream"], "RPG": ["Final Fantasy VII", "Final Fantasy X", "Final Fantasy VI", "Final Fantasy VII Remake", "Chrono Trigger", "Kingdom Hearts", "Kingdom Hearts II", "Kingdom Hearts III", "Persona 5", "Persona 4", "Persona 3 Reload", "NieR Automata", "NieR Replicant", "Undertale", "Deltarune", "Fallout 3", "Fallout 4", "Fallout New Vegas", "The Elder Scrolls V: Skyrim", "The Elder Scrolls IV: Oblivion", "Mass Effect", "Mass Effect 2", "Dragon Age Origins", "The Witcher 3", "Cyberpunk 2077", "Baldur's Gate 3", "Disco Elysium", "Divinity Original Sin 2", "Kingdom Come Deliverance", "Fire Emblem Three Houses", "Pokemon Red and Blue", "Pokemon Gold and Silver", "Pokemon Black and White", "Pokemon Platinum", "Pokemon Sword and Shield", "Genshin Impact", "Honkai Star Rail", "Wuthering Waves", "Limbus Company", "Clair Obscur: Expedition 33", "Hogwarts Legacy", "Diablo II", "Diablo III", "Monster Hunter Rise", "Mount and Blade Warband", "Kenshi", "Hyper Light Drifter"], "MMORPG": ["World of Warcraft", "Final Fantasy XIV", "Ultima Online", "Albion Online", "Metin2", "Silkroad Online"], "MOBA": ["League of Legends", "Dota 2", "Brawl Stars"], "Strateji": ["Warcraft III", "StarCraft II", "Age of Empires II", "Age of Empires III", "Civilization IV Baba Yetu", "Civilization VI", "Command and Conquer Red Alert", "Heroes of Might and Magic III", "Hearts of Iron IV", "Europa Universalis IV", "Rome Total War", "Medieval II: Total War", "Frostpunk", "Age of War", "Stick War", "Kingdom Two Crowns", "Clash of Clans", "Clash Royale", "Plague Inc", "Worms Armageddon", "Raft Wars", "Colony", "Pikmin"], "Kule savunma": ["Bloons TD 5", "Plants vs Zombies", "Dungeon Defenders"], "Dövüş": ["Street Fighter II", "Street Fighter 6", "Mortal Kombat", "Tekken 3", "Tekken 7", "Super Smash Bros Brawl", "Super Smash Bros Ultimate", "Electric Man 2"], "Aksiyon": ["Gun Mayhem", "Strike Force Heroes", "Broforce", "Castle Crashers", "Magicka 2", "Hotline Miami", "Katana Zero", "Henry Stickmin"], "Yarış": ["Mario Kart 8", "Mario Kart Wii", "Crash Team Racing", "Need for Speed Most Wanted", "Need for Speed Underground 2", "Burnout Paradise", "Forza Horizon 4", "Initial D", "Hill Climb Racing", "Happy Wheels"], "Spor": ["Rocket League", "FIFA 14", "FIFA 99", "PES 2013", "Tony Hawk's Pro Skater 2", "Wii Sports"], "Ritim": ["Guitar Hero III"], "Simülasyon": ["Animal Crossing New Horizons", "Stardew Valley", "The Sims 2", "SimCity 4", "Slime Rancher", "Dinkum", "Papers Please", "Schedule I", "Satisfactory", "Factorio", "Splatoon 2", "HuniePop"], "Hayatta kalma": ["Terraria", "Minecraft", "Subnautica", "The Forest", "Rust", "Valheim", "Don't Starve Together", "ARK Survival Evolved", "Palworld", "Grounded", "Barotrauma", "Unturned", "Dying Light"], "Korku": ["Five Nights at Freddy's", "Resident Evil 4", "Resident Evil 2 Remake", "Silent Hill 2", "Little Nightmares II", "Hello Neighbor", "Lethal Company", "R.E.P.O.", "Friday the 13th The Game", "No More Room in Hell", "Doki Doki Literature Club"], "Roguelike": ["Hades", "Hades II", "Dead Cells", "The Binding of Isaac", "Slay the Spire", "Risk of Rain 2", "Rogue Legacy", "Balatro", "Vampire Survivors"], "Hikâye odaklı macera": ["Journey", "Outer Wilds", "Life is Strange", "Detroit Become Human", "Heavy Rain", "Beyond Two Souls", "Fahrenheit", "The Walking Dead", "Death Stranding", "It Takes Two", "Grim Fandango", "Ace Attorney", "Stray", "Dispatch"], "Parti": ["Among Us", "Fall Guys", "Overcooked"], "Sonsuz koşu": ["Subway Surfers", "Temple Run", "Jetpack Joyride"], "Arcade": ["Pac-Man", "Fruit Ninja"]})) for(const g of gs) GENRE[g] = k;
 let frG = null;
 function frGroups(){ // seri -> o serideki oyunlar (şık listesi için, bir kez hesaplanır)
   if(frG) return frG; frG = new Map();
@@ -1687,12 +1693,12 @@ async function issueRound(){
   const options = shuffle(picked);
   H.lv = options.map(o => o === H.game ? 1 : answerLevel(o, H.game, false));
   H.correct = options.indexOf(H.game);
-  const coverMode = H.mode === 'cover';
+  H.mode = 'cover'; const coverMode = true; // artık sadece kapak modu var
   const mult = (H.total >= 5 && H.n > H.total - 2) ? 2 : 1;
   // Hızlı tur: arada bir (ilk tur ve çift puanlı turlar hariç) 5 sn dinletilir, şarkının hep ortasından
-  const fast = !coverMode && H.n > 1 && mult === 1 && H.listen > 5 && Math.random() < 0.2;
+  const fast = H.n > 1 && mult === 1 && H.listen > 5 && Math.random() < 0.2;
   const am = H.ansMode === 'mix' ? (Math.random() < 0.5 ? 'text' : 'opts') : H.ansMode;
-  const listen = coverMode ? 30 : fast ? 5 : H.listen;
+  const listen = fast ? 5 : (H.listen || 30);
   const dur = v.dur || 180;
   let start = 0;
   if(fast){ const lo = Math.floor(dur * 0.25), hi = Math.max(lo, Math.floor(Math.min(dur * 0.6, dur - listen - 5))); start = lo + Math.floor(Math.random() * (hi - lo + 1)); }
@@ -1701,7 +1707,7 @@ async function issueRound(){
   const cover = coverMode ? await fetchCover(H.game, v.id) : '';
   if(H.results[H.idx] !== v) return;
   const startAt = now() + 3500 + (H.wheelDelay || 0); H.wheelDelay = 0;
-  const deadline = startAt + (coverMode ? 30 : listen + 10) * 1000;
+  const deadline = startAt + Math.max(listen, 12) * 1000;
   const ups = {};
   ups['answers/' + H.n] = null;
   ups.reveal = null;
@@ -1710,7 +1716,7 @@ async function issueRound(){
   const elim = shuffle(zero).slice(0, Math.max(1, zero.length - 3));
   const hint = H.game.split(' ').map(w => /^[0-9IVX]+\W*$/.test(w) ? w : [...w].map((ch, i, a) => i === 0 || !/[\p{L}\p{N}]/u.test(ch) || !/[\p{L}\p{N}]/u.test(a[i-1]) ? ch : '_').join('')).join('   ');
   const rkL = ranked();
-  ups.round = { lead: rkL.length > 1 && (rkL[0].score || 0) > (rkL[1].score || 0) ? rkL[0].id : '', mult, fast:fast ? 1 : 0, n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:am, jok:H.jokers || 0, elim, hint };
+  ups.round = { lead: rkL.length > 1 && (rkL[0].score || 0) > (rkL[1].score || 0) ? rkL[0].id : '', mult, fast:fast ? 1 : 0, genre:GENRE[H.game] || '', n:H.n, total:H.total, videoId:v.id, start, listen, options, startAt, deadline, mode:H.mode, cover, ansMode:am, jok:H.jokers || 0, elim, hint };
   ups.hs = JSON.parse(JSON.stringify({ n:H.n, game:H.game, correct:H.correct, lv:H.lv, vid:v.id, title:v.title || '', dur:v.dur || 0, wheelN:H.wheelN || 0, set:{ total:H.total, listen:H.listen, startMode:H.startMode, mode:H.mode, ansMode:H.ansMode, diff:H.diff, theme:H.theme, teams:H.teams, jokers:H.jokers } }));
   room.update(ups);
   H.timer = setInterval(hostCheck, 500);
